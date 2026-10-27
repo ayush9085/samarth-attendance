@@ -7,8 +7,8 @@ import { createRateLimiter } from "@/lib/rate-limit";
 import { clientIp, hashIp } from "@/lib/request";
 import type { VerifyResponse } from "@/types/submission";
 
-// Generous: a whole office often shares one public IP (NAT / mobile carrier CGNAT).
-const limiter = createRateLimiter({ limit: 300, windowMs: 10 * 60 * 1000 });
+// Generous: university campus Wi-Fi often shares one public NAT IP for hundreds of students.
+const limiter = createRateLimiter({ limit: 2000, windowMs: 10 * 60 * 1000 });
 
 /**
  * Step 1 of attendance: server-side geofence check of a raw GPS fix.

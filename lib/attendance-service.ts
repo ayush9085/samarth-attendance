@@ -231,10 +231,10 @@ export async function checkIn(body: unknown, meta: RequestMeta, deps: CheckInDep
   try {
     const submission = await deps.insert({
       name: input.name,
-      designation: input.designation,
-      institution: input.institution,
-      email: input.email,
-      mobile: input.mobile,
+      sapId: input.sapId,
+      course: input.course,
+      specialization: input.specialization,
+      batch: input.batch,
       latitude: location.latitude,
       longitude: location.longitude,
       accuracyM: location.accuracy,

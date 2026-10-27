@@ -40,20 +40,30 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
 
   return (
     <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-10">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Attendance</h1>
-          <p className="text-sm text-muted">
-            Workplace: {geofence.target.latitude.toFixed(6)}, {geofence.target.longitude.toFixed(6)} · radius{" "}
-            {geofence.radiusMeters} m
-          </p>
-          {lastClear && (
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3.5">
+          <div className="flex items-center gap-2.5 rounded-xl border border-border bg-white px-2.5 py-1.5 shadow-2xs">
+            <img src="/upes-logo.png" alt="UPES" className="h-7 w-auto object-contain" />
+            <div className="h-5 w-px bg-slate-200" />
+            <img src="/samarth-logo.png" alt="SAMARTH" className="h-6 w-auto object-contain" />
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-400">
+              Admin Portal
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight">SAMARTH INTERNSHIP 3.0</h1>
             <p className="text-xs text-muted">
-              Last cleared by {lastClear.actor} on {formatDateTime(lastClear.at)}
-              {typeof lastClear.details?.deleted === "number" &&
-                ` (${lastClear.details.deleted} record${lastClear.details.deleted === 1 ? "" : "s"})`}
+              Target: {geofence.target.latitude.toFixed(6)}, {geofence.target.longitude.toFixed(6)} · radius{" "}
+              {geofence.radiusMeters} m
             </p>
-          )}
+            {lastClear && (
+              <p className="text-xs text-muted">
+                Last cleared by {lastClear.actor} on {formatDateTime(lastClear.at)}
+                {typeof lastClear.details?.deleted === "number" &&
+                  ` (${lastClear.details.deleted} record${lastClear.details.deleted === 1 ? "" : "s"})`}
+              </p>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/admin/qr" className="btn-secondary py-2 text-sm">

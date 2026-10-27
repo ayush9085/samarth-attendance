@@ -102,11 +102,11 @@ export function SubmissionsTable({ rows }: { rows: Submission[] }) {
         <table className="w-full text-left text-sm">
           <thead className="border-b border-border text-xs uppercase tracking-wide text-muted">
             <tr>
-              <th className="px-3 py-3 font-medium">Employee Name</th>
-              <th className="px-3 py-3 font-medium">Designation</th>
-              <th className="px-3 py-3 font-medium">Institution</th>
-              <th className="px-3 py-3 font-medium">Email</th>
-              <th className="px-3 py-3 font-medium">Mobile Number</th>
+              <th className="px-3 py-3 font-medium">Student Name</th>
+              <th className="px-3 py-3 font-medium">SAP ID</th>
+              <th className="px-3 py-3 font-medium">Course</th>
+              <th className="px-3 py-3 font-medium">Specialization</th>
+              <th className="px-3 py-3 font-medium">Batch</th>
               <th className="px-3 py-3 text-right font-medium">Distance</th>
               <th className="px-3 py-3 font-medium">Location Status</th>
               <th className="px-3 py-3 font-medium">Check-In Time</th>
@@ -119,14 +119,10 @@ export function SubmissionsTable({ rows }: { rows: Submission[] }) {
             {rows.map((r) => (
               <tr key={r.id} className="align-top">
                 <td className="px-3 py-3 font-medium">{r.name}</td>
-                <td className="px-3 py-3">{r.designation ?? <Dash />}</td>
-                <td className="px-3 py-3">{r.institution ?? <Dash />}</td>
-                <td className="max-w-56 px-3 py-3">
-                  <Contact r={r} />
-                </td>
-                <td className="px-3 py-3">
-                  <Mobile r={r} />
-                </td>
+                <td className="px-3 py-3 font-mono text-xs">{r.sapId ?? r.memberId ?? <Dash />}</td>
+                <td className="px-3 py-3">{r.course ?? r.department ?? <Dash />}</td>
+                <td className="px-3 py-3">{r.specialization ?? r.designation ?? <Dash />}</td>
+                <td className="px-3 py-3">{r.batch ?? r.institution ?? <Dash />}</td>
                 <td className="tabular whitespace-nowrap px-3 py-3 text-right">
                   {formatDistance(r.distanceM)}
                   {r.lowAccuracy && (
@@ -156,7 +152,11 @@ export function SubmissionsTable({ rows }: { rows: Submission[] }) {
               <div className="min-w-0">
                 <div className="font-medium">{r.name}</div>
                 <div className="text-muted">
-                  {isLegacy(r) ? `${r.department ?? ""} · ${r.memberId ?? ""}` : `${r.designation} · ${r.institution}`}
+                  {r.sapId
+                    ? `${r.course} (${r.specialization}) · ${r.batch} · SAP: ${r.sapId}`
+                    : isLegacy(r)
+                    ? `${r.department ?? ""} · ${r.memberId ?? ""}`
+                    : `${r.designation} · ${r.institution}`}
                 </div>
               </div>
               <StatusBadge status={r.geofenceStatus} />

@@ -76,43 +76,38 @@ const orgText = (label: string, max: number) =>
     .refine((s) => ORG_TEXT.test(s), `${label} may only contain letters, numbers, spaces and . , & ( ) ' / : -`)
     .refine((s) => /\p{L}/u.test(s), `${label} must contain letters.`);
 
-/** Step 2 — employee details, shown only after the server verified the location. All fields are required. */
-export const employeeSchema = z.object({
-  name: text("Employee Name", 2, 100).refine(
+/** Step 2 — student details, shown only after the server verified the location. All fields are required. */
+export const studentSchema = z.object({
+  name: text("Student Name", 2, 100).refine(
     (s) => /^[\p{L}\p{M}][\p{L}\p{M}\s.'’-]*$/u.test(s),
-    "Employee Name may only contain letters, spaces, apostrophes, periods and hyphens.",
+    "Student Name may only contain letters, spaces, apostrophes, periods and hyphens.",
   ),
-  designation: orgText("Designation", 100),
-  institution: orgText("Institution", 150),
-  email: z
-    .string({ error: "Email ID is required." })
-    .trim()
-    .min(1, "Email ID is required.")
-    .max(254, "Email ID is too long.")
-    .pipe(z.email("Enter a valid email address, e.g. user@example.com."))
-    .transform((s) => s.toLowerCase()),
-  mobile: z
-    .string({ error: "Mobile Number is required." })
-    .trim()
-    .min(1, "Mobile Number is required.")
-    .transform((s, ctx) => {
-      const normalized = normalizeMobile(s);
-      if (!normalized) {
-        ctx.addIssue({ code: "custom", message: "Enter a valid mobile number, e.g. 98765 43210 or +91 98765 43210." });
-        return z.NEVER;
-      }
-      return normalized;
-    }),
+  sapId: text("SAP ID", 2, 50).refine(
+    (s) => /^[a-zA-Z0-9_\-\s/]+$/.test(s),
+    "SAP ID may only contain numbers, letters, spaces, hyphens, and slashes.",
+  ),
+  course: orgText("Course", 100),
+  specialization: orgText("Specialization", 100),
+  batch: text("Batch", 2, 50).refine(
+    (s) => /^[\p{L}\p{N}\s/:\-()]+$/u.test(s),
+    "Batch may only contain letters, numbers, spaces, parentheses, hyphens, colons and slashes.",
+  ),
 });
 
-export type EmployeeInput = z.infer<typeof employeeSchema>;
-export type EmployeeField = keyof typeof employeeSchema.shape;
+export type StudentInput = z.infer<typeof studentSchema>;
+export type StudentField = keyof typeof studentSchema.shape;
 
-/** Validate one employee field (for as-you-type feedback). Returns the error message or null. */
-export function validateEmployeeField(field: EmployeeField, value: string): string | null {
-  const r = employeeSchema.shape[field].safeParse(value);
+/** Validate one student field (for as-you-type feedback). Returns the error message or null. */
+export function validateStudentField(field: StudentField, value: string): string | null {
+  const r = studentSchema.shape[field].safeParse(value);
   return r.success ? null : (r.error.issues[0]?.message ?? "Invalid value.");
 }
+
+// Aliases for compatibility
+export const employeeSchema = studentSchema;
+export type EmployeeInput = StudentInput;
+export type EmployeeField = StudentField;
+export const validateEmployeeField = validateStudentField;
 
 /** Check In request: employee details + the signed location verification from step 1. */
 export const checkInSchema = employeeSchema.extend({

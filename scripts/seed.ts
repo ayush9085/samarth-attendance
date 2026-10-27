@@ -46,10 +46,9 @@ const FIRST = ["Anita", "Rahul", "Priya", "Arjun", "Meera", "Vishnu", "Lakshmi",
   "Sneha", "Nikhil", "Aswathy", "Gokul", "Reshma", "Sanjay", "Fathima", "Joseph", "Nimisha", "Abdul"] as const;
 const LAST = ["Menon", "Nair", "Pillai", "Kumar", "Varghese", "Thomas", "Krishnan", "Raj", "Suresh", "Mohan",
   "Das", "George", "Rahman", "Iyer", "Chandran"] as const;
-const DESIGNATIONS = ["Assistant Professor", "Associate Professor", "Professor", "Lab Assistant", "Research Scholar",
-  "Technical Officer", "Office Assistant", "Librarian", "Head of Dept., CSE", "Guest Lecturer"] as const;
-const INSTITUTIONS = ["College of Engineering Trivandrum", "Government Engineering College, Barton Hill",
-  "University of Kerala", "Sree Chitra Thirunal College of Engineering", "Mar Baselios College of Engineering and Technology"] as const;
+const COURSES = ["B.Tech", "M.Tech", "MCA", "BCA", "B.Sc Computer Science"] as const;
+const SPECIALIZATIONS = ["Computer Science", "Artificial Intelligence & ML", "Data Science", "Cyber Security", "Cloud Computing"] as const;
+const BATCHES = ["2022-2026", "2023-2027", "2024-2028", "Batch A", "Batch B"] as const;
 const DEPARTMENTS = ["Computer Science", "Electronics", "Mechanical", "Civil", "Electrical"] as const;
 
 function geofenceFromEnv(): GeofenceConfig {
@@ -97,10 +96,10 @@ async function main() {
 
       const details = employeeSchema.parse({
         name: `${first} ${last}`,
-        designation: pick(DESIGNATIONS),
-        institution: pick(INSTITUTIONS),
-        email,
-        mobile: `90000 ${String(10000 + i).padStart(5, "0")}`, // obviously fake 90000-xxxxx numbers
+        sapId: `5000${String(1000 + i)}`,
+        course: pick(COURSES),
+        specialization: pick(SPECIALIZATIONS),
+        batch: pick(BATCHES),
       });
 
       // Mostly well inside; a few near the 100 m edge; ~15% with poor (but acceptable) accuracy
@@ -118,11 +117,11 @@ async function main() {
                  VALUES (${verificationId}, ${new Date(createdAt.getTime() + 600_000)}, ${createdAt})`;
         await tx`
           INSERT INTO submissions (
-            name, designation, institution, email, mobile, latitude, longitude, accuracy_m,
+            name, sap_id, course, specialization, batch, latitude, longitude, accuracy_m,
             position_captured_at, distance_m, geofence_status, low_accuracy,
             target_latitude, target_longitude, radius_m, verification_id, user_agent, ip_hash, created_at
           ) VALUES (
-            ${details.name}, ${details.designation}, ${details.institution}, ${details.email}, ${details.mobile},
+            ${details.name}, ${details.sapId}, ${details.course}, ${details.specialization}, ${details.batch},
             ${pos.latitude}, ${pos.longitude}, ${Math.round(accuracy * 10) / 10},
             ${new Date(createdAt.getTime() - between(20, 90) * 1000)}, ${distanceMeters}, ${status}, ${accuracy > 50},
             ${geofence.target.latitude}, ${geofence.target.longitude}, ${radius}, ${verificationId},

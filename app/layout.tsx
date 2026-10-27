@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Registration",
-  description: "Location-verified registration",
+  title: {
+    default: "SAMARTH INTERNSHIP 3.0 Icebreaking session",
+    template: "%s · SAMARTH INTERNSHIP 3.0",
+  },
+  description: "Location-verified attendance for SAMARTH INTERNSHIP 3.0 Icebreaking session",
 };
 
 export const viewport: Viewport = {

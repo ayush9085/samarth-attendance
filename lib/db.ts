@@ -30,7 +30,7 @@ export function db(): postgres.Sql {
 const MAX_PAGE_SIZE = 200;
 
 const COLUMNS = (sql: postgres.Sql | postgres.TransactionSql) => sql`
-  id, name, designation, institution, email, mobile, department, member_id,
+  id, name, sap_id, course, specialization, batch, designation, institution, email, mobile, department, member_id,
   latitude, longitude, accuracy_m, position_captured_at, distance_m, geofence_status, low_accuracy,
   target_latitude, target_longitude, radius_m, client_distance_m, verification_id, user_agent, created_at`;
 
@@ -67,12 +67,14 @@ export async function insertSubmission(s: NewSubmission): Promise<Submission> {
 async function insertSubmissionRow(sql: postgres.TransactionSql, s: NewSubmission): Promise<Submission> {
   const [row] = await sql<Submission[]>`
     INSERT INTO submissions (
-      name, designation, institution, email, mobile,
+      name, sap_id, course, specialization, batch,
+      designation, institution, email, mobile,
       latitude, longitude, accuracy_m, position_captured_at,
       distance_m, geofence_status, low_accuracy, target_latitude, target_longitude, radius_m,
       client_distance_m, verification_id, user_agent, ip_hash
     ) VALUES (
-      ${s.name}, ${s.designation}, ${s.institution}, ${s.email}, ${s.mobile},
+      ${s.name}, ${s.sapId ?? null}, ${s.course ?? null}, ${s.specialization ?? null}, ${s.batch ?? null},
+      ${s.designation ?? null}, ${s.institution ?? null}, ${s.email ?? null}, ${s.mobile ?? null},
       ${s.latitude}, ${s.longitude}, ${s.accuracyM}, ${s.positionCapturedAt},
       ${s.distanceM}, ${s.geofenceStatus}, ${s.lowAccuracy},
       ${s.targetLatitude}, ${s.targetLongitude}, ${s.radiusM},
@@ -87,7 +89,9 @@ function whereClause(sql: postgres.Sql, f: SubmissionFilters) {
   if (f.q) {
     const like = `%${f.q.replace(/[\\%_]/g, (m) => "\\" + m)}%`;
     conditions.push(sql`(
-      name ILIKE ${like} OR designation ILIKE ${like} OR institution ILIKE ${like}
+      name ILIKE ${like} OR sap_id ILIKE ${like} OR course ILIKE ${like}
+      OR specialization ILIKE ${like} OR batch ILIKE ${like}
+      OR designation ILIKE ${like} OR institution ILIKE ${like}
       OR email ILIKE ${like} OR mobile ILIKE ${like}
       OR member_id ILIKE ${like} OR department ILIKE ${like}
     )`);

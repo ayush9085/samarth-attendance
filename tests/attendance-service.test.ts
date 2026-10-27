@@ -35,10 +35,10 @@ function fixAt(distance: number, bearing = 30, accuracy = 10) {
 
 const EMPLOYEE = {
   name: "Anita Menon",
-  designation: "Assistant Professor",
-  institution: "College of Engineering Trivandrum",
-  email: "Anita.Menon@Example.com",
-  mobile: "98765 43210",
+  sapId: "500123456",
+  course: "B.Tech",
+  specialization: "Computer Science",
+  batch: "2022-2026",
 };
 const META = { userAgent: "vitest", ipHash: "abc" };
 
@@ -120,10 +120,10 @@ describe("checkIn — authoritative server-side re-check and storage", () => {
     const saved = insert.mock.calls[0][0];
     expect(saved).toMatchObject({
       name: "Anita Menon",
-      designation: "Assistant Professor",
-      institution: "College of Engineering Trivandrum",
-      email: "anita.menon@example.com",
-      mobile: "+919876543210",
+      sapId: "500123456",
+      course: "B.Tech",
+      specialization: "Computer Science",
+      batch: "2022-2026",
       distanceM: 42.6,
       geofenceStatus: "WITHIN_RANGE",
       targetLatitude: TARGET.latitude,
@@ -210,14 +210,10 @@ describe("checkIn — authoritative server-side re-check and storage", () => {
   it.each([
     ["missing name", { name: "" }, "name"],
     ["name with digits", { name: "Agent 007" }, "name"],
-    ["missing designation", { designation: " " }, "designation"],
-    ["missing institution", { institution: "" }, "institution"],
-    ["invalid email", { email: "anita@" }, "email"],
-    ["email without domain dot", { email: "not-an-email" }, "email"],
-    ["missing mobile", { mobile: "" }, "mobile"],
-    ["short mobile", { mobile: "12345" }, "mobile"],
-    ["Indian mobile starting with 5", { mobile: "5876543210" }, "mobile"],
-    ["letters in mobile", { mobile: "98765abcde" }, "mobile"],
+    ["missing sapId", { sapId: " " }, "sapId"],
+    ["missing course", { course: "" }, "course"],
+    ["missing specialization", { specialization: "" }, "specialization"],
+    ["missing batch", { batch: "" }, "batch"],
   ])("5. rejects invalid form data: %s", async (_label, override, field) => {
     const { d, insert } = deps();
     const r = await checkIn({ ...EMPLOYEE, ...override, verificationToken: await tokenFor(10) }, META, d);

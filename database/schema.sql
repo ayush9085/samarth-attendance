@@ -61,25 +61,36 @@ ALTER TABLE submissions ADD COLUMN IF NOT EXISTS designation     text CHECK (cha
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS institution     text CHECK (char_length(institution) BETWEEN 2 AND 150);
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS email           text CHECK (char_length(email) BETWEEN 3 AND 254 AND email LIKE '%_@_%');
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS mobile          text CHECK (mobile ~ '^\+[1-9][0-9]{7,14}$');
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS sap_id          text CHECK (char_length(sap_id) BETWEEN 1 AND 50);
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS course          text CHECK (char_length(course) BETWEEN 1 AND 100);
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS specialization  text CHECK (char_length(specialization) BETWEEN 1 AND 100);
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS batch           text CHECK (char_length(batch) BETWEEN 1 AND 50);
 -- One server-issued location verification = one check-in (prevents token replay)
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS verification_id uuid UNIQUE;
 
 DO $$
 BEGIN
-  -- Every row is either a legacy registration or a complete, in-range check-in
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'record_kind_complete') THEN
-    ALTER TABLE submissions ADD CONSTRAINT record_kind_complete CHECK (
-      (verification_id IS NULL AND department IS NOT NULL AND member_id IS NOT NULL)
-      OR
-      (verification_id IS NOT NULL AND designation IS NOT NULL AND institution IS NOT NULL
-        AND email IS NOT NULL AND mobile IS NOT NULL AND geofence_status = 'WITHIN_RANGE')
-    );
+  -- Re-create record_kind_complete to allow student check-ins
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'record_kind_complete') THEN
+    ALTER TABLE submissions DROP CONSTRAINT record_kind_complete;
   END IF;
+  ALTER TABLE submissions ADD CONSTRAINT record_kind_complete CHECK (
+    (verification_id IS NULL AND department IS NOT NULL AND member_id IS NOT NULL)
+    OR
+    (verification_id IS NOT NULL AND (
+      (sap_id IS NOT NULL AND course IS NOT NULL AND specialization IS NOT NULL AND batch IS NOT NULL)
+      OR
+      (designation IS NOT NULL AND institution IS NOT NULL AND email IS NOT NULL AND mobile IS NOT NULL)
+    ) AND geofence_status = 'WITHIN_RANGE')
+  );
 END
 $$;
 
-CREATE INDEX IF NOT EXISTS submissions_institution_idx ON submissions (institution);
-CREATE INDEX IF NOT EXISTS submissions_email_idx       ON submissions (email);
+CREATE INDEX IF NOT EXISTS submissions_institution_idx    ON submissions (institution);
+CREATE INDEX IF NOT EXISTS submissions_email_idx          ON submissions (email);
+CREATE INDEX IF NOT EXISTS submissions_sap_id_idx         ON submissions (sap_id);
+CREATE INDEX IF NOT EXISTS submissions_course_idx         ON submissions (course);
+CREATE INDEX IF NOT EXISTS submissions_batch_idx          ON submissions (batch);
 
 -- ── v3: replay protection independent of attendance data ───────────────────
 -- Every location verification that has been used for a check-in, kept until it

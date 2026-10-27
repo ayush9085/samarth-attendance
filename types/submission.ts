@@ -8,12 +8,16 @@ import type { GeofenceStatus } from "@/lib/geo";
 export interface Submission {
   id: string;
   name: string;
-  designation: string | null;
-  institution: string | null;
-  email: string | null;
-  mobile: string | null;
-  department: string | null;
-  memberId: string | null;
+  sapId?: string | null;
+  course?: string | null;
+  specialization?: string | null;
+  batch?: string | null;
+  designation?: string | null;
+  institution?: string | null;
+  email?: string | null;
+  mobile?: string | null;
+  department?: string | null;
+  memberId?: string | null;
   latitude: number;
   longitude: number;
   accuracyM: number;
@@ -30,7 +34,14 @@ export interface Submission {
   createdAt: Date;
 }
 
-export type NewSubmission = Omit<Submission, "id" | "createdAt" | "department" | "memberId"> & {
+export type NewSubmission = Omit<
+  Submission,
+  "id" | "createdAt" | "department" | "memberId" | "designation" | "institution" | "email" | "mobile"
+> & {
+  designation?: string | null;
+  institution?: string | null;
+  email?: string | null;
+  mobile?: string | null;
   ipHash: string | null;
   /** When the location verification expires; kept in used_verifications until then (replay guard). */
   verificationExpiresAt: Date | null;

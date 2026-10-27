@@ -87,6 +87,10 @@ describe.skipIf(!TEST_URL)("database (integration)", () => {
     n++;
     return {
       name: "Test Person",
+      sapId: `5000${n}`,
+      course: "B.Tech",
+      specialization: "CSE",
+      batch: "2024",
       designation: "Lecturer",
       institution: "CET",
       email: `person${n}@example.com`,

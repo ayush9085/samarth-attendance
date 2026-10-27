@@ -37,10 +37,17 @@ export default async function QrPage() {
       {/* Poster — the only thing that prints */}
       <section
         id="qr-poster"
-        className="mx-auto flex max-w-md flex-col items-center rounded-2xl border border-border bg-white p-8 text-center text-black shadow-sm print:max-w-none print:border-0 print:shadow-none"
+        className="relative overflow-hidden mx-auto flex max-w-md flex-col items-center rounded-2xl border border-border bg-white p-8 text-center text-black shadow-sm print:max-w-none print:border-0 print:shadow-none"
       >
-        <h2 className="text-2xl font-semibold tracking-tight">Workplace Attendance</h2>
-        <p className="mt-1 text-neutral-600">Scan with your phone camera to check in</p>
+        <div className="absolute inset-x-0 top-0 h-1.5 brand-stripe" />
+        <div className="mb-4 flex items-center gap-3">
+          <img src="/upes-logo.png" alt="UPES Logo" className="h-8 w-auto object-contain" />
+          <div className="h-5 w-px bg-slate-300" />
+          <img src="/samarth-logo.png" alt="SAMARTH Logo" className="h-7 w-auto object-contain" />
+        </div>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">SAMARTH INTERNSHIP 3.0</h2>
+        <p className="text-sm font-semibold text-sky-800">Icebreaking Session Attendance</p>
+        <p className="mt-1 text-xs text-neutral-600">Scan with your phone camera to check in</p>
         <svg
           viewBox={`0 0 ${size} ${size}`}
           shapeRendering="crispEdges"

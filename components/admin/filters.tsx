@@ -35,7 +35,7 @@ export function AdminFilters({ institutions }: { institutions: string[] }) {
       <input
         type="search"
         className="input py-2"
-        placeholder="Search name, email, mobile, designation…"
+        placeholder="Search student name, SAP ID, course, batch…"
         aria-label="Search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
