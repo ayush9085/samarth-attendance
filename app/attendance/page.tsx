@@ -23,30 +23,30 @@ export default async function AttendancePage() {
   const open = await isAttendanceOpenOrDefault("attendance");
 
   return (
-    <div className="min-h-full flex flex-col justify-between py-6 px-4 sm:px-6">
+    <div className="min-h-full flex flex-col justify-between py-4 px-3 sm:py-8 sm:px-6">
       <main className="mx-auto w-full max-w-xl flex-1 flex flex-col">
         {/* Institutional Header */}
-        <header className="mb-6 text-center">
-          {/* Dual Logos Container */}
-          <div className="inline-flex items-center justify-center gap-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-3 shadow-2xs mb-4">
-            <div className="flex h-9 items-center justify-center">
-              <img src="/upes-logo.png" alt="UPES Logo" className="h-8 w-auto object-contain" />
+        <header className="mb-5 text-center">
+          {/* Dual Logos Container - Prominent & Mobile-Friendly */}
+          <div className="inline-flex items-center justify-center gap-5 sm:gap-7 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-3.5 sm:py-4 shadow-xs mb-3.5">
+            <div className="flex h-12 sm:h-14 items-center justify-center">
+              <img src="/upes-logo.png" alt="UPES Logo" className="h-11 sm:h-13 w-auto object-contain" />
             </div>
-            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-            <div className="flex h-9 items-center justify-center">
-              <img src="/samarth-logo.png" alt="SAMARTH Logo" className="h-7 w-auto object-contain" />
+            <div className="h-8 sm:h-10 w-px bg-slate-200 dark:bg-slate-700" />
+            <div className="flex h-12 sm:h-14 items-center justify-center">
+              <img src="/samarth-logo.png" alt="SAMARTH Logo" className="h-11 sm:h-13 w-auto object-contain" />
             </div>
           </div>
 
           {/* Heading */}
           <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              UPES · Student Attendance Portal
+            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              UPES · Official Attendance Portal
             </p>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
               SAMARTH INTERNSHIP 3.0
             </h1>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            <p className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
               Ice Breaking Session Attendance & Feedback
             </p>
           </div>

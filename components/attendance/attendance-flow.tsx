@@ -671,14 +671,14 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
                           key={opt.value}
                           type="button"
                           onClick={() => setRating("eventRating", opt.value)}
-                          className={`py-2 px-1 rounded-md border text-center transition-colors cursor-pointer ${
+                          className={`py-2.5 sm:py-3 px-1 min-h-[52px] rounded-lg border text-center transition-colors cursor-pointer select-none ${
                             isSelected
-                              ? "border-[#003a70] bg-[#003a70] text-white dark:border-sky-500 dark:bg-sky-600 font-semibold shadow-2xs"
-                              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60"
+                              ? "border-[#003a70] bg-[#003a70] text-white dark:border-sky-500 dark:bg-sky-600 font-semibold shadow-xs"
+                              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60 active:bg-slate-100"
                           }`}
                         >
-                          <span className="block text-sm font-bold">{opt.value}</span>
-                          <span className="block text-[10px] leading-tight mt-0.5 truncate">{opt.label}</span>
+                          <span className="block text-base sm:text-lg font-bold">{opt.value}</span>
+                          <span className="block text-[9px] sm:text-[11px] leading-tight mt-0.5 truncate">{opt.label}</span>
                         </button>
                       );
                     })}
@@ -701,14 +701,14 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
                           key={opt.value}
                           type="button"
                           onClick={() => setRating("contentRelevance", opt.value)}
-                          className={`py-2 px-1 rounded-md border text-center transition-colors cursor-pointer ${
+                          className={`py-2.5 sm:py-3 px-1 min-h-[52px] rounded-lg border text-center transition-colors cursor-pointer select-none ${
                             isSelected
-                              ? "border-[#003a70] bg-[#003a70] text-white dark:border-sky-500 dark:bg-sky-600 font-semibold shadow-2xs"
-                              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60"
+                              ? "border-[#003a70] bg-[#003a70] text-white dark:border-sky-500 dark:bg-sky-600 font-semibold shadow-xs"
+                              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60 active:bg-slate-100"
                           }`}
                         >
-                          <span className="block text-sm font-bold">{opt.value}</span>
-                          <span className="block text-[10px] leading-tight mt-0.5 truncate">{opt.label}</span>
+                          <span className="block text-base sm:text-lg font-bold">{opt.value}</span>
+                          <span className="block text-[9px] sm:text-[11px] leading-tight mt-0.5 truncate">{opt.label}</span>
                         </button>
                       );
                     })}
