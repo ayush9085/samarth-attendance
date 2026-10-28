@@ -92,6 +92,7 @@ $$;
 
 CREATE INDEX IF NOT EXISTS submissions_institution_idx    ON submissions (institution);
 CREATE INDEX IF NOT EXISTS submissions_email_idx          ON submissions (email);
+CREATE UNIQUE INDEX IF NOT EXISTS submissions_sap_id_unique_idx ON submissions (sap_id) WHERE sap_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS submissions_sap_id_idx         ON submissions (sap_id);
 CREATE INDEX IF NOT EXISTS submissions_school_idx         ON submissions (school);
 CREATE INDEX IF NOT EXISTS submissions_course_idx         ON submissions (course);

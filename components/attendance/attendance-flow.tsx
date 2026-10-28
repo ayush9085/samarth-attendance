@@ -226,7 +226,9 @@ export function AttendanceFlow({
         } else if (data.code === "ALREADY_USED") {
           setPhase({
             k: "idle",
-            notice: "This attendance record was already submitted.",
+            notice: data.error
+              ? `${data.error} No further action is required.`
+              : "Attendance has already been recorded for your SAP ID. No further action is required.",
           });
         } else if (data.fieldErrors) {
           setErrors(data.fieldErrors);

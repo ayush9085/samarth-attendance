@@ -204,8 +204,8 @@ export async function checkIn(body: unknown, meta: RequestMeta, deps: CheckInDep
   let verificationExpiresAt: Date;
   let isLowAccuracy = false;
 
-  // If admin has turned OFF geofencing verification, allow check-in without GPS token
-  if (deps.geofenceEnabled === false && !input.verificationToken) {
+  // If admin has turned OFF geofencing verification, allow check-in directly
+  if (deps.geofenceEnabled === false) {
     location = {
       latitude: deps.geofence.target.latitude,
       longitude: deps.geofence.target.longitude,
@@ -295,11 +295,20 @@ export async function checkIn(body: unknown, meta: RequestMeta, deps: CheckInDep
     // Raised by the store when attendance is closed (checked inside the insert transaction)
     if (isAttendanceClosedError(err)) return closedResult();
     if (hasErrorCode(err, PG.UNIQUE_VIOLATION)) {
+      const errStr = String(
+        (err as Record<string, unknown>)?.detail ||
+          (err as Record<string, unknown>)?.message ||
+          (err as Record<string, unknown>)?.constraint_name ||
+          "",
+      );
+      const isSapDuplicate = errStr.includes("sap_id") || errStr.includes("sapId");
       return {
         ok: false,
         status: 409,
         code: "ALREADY_USED",
-        error: "This location verification has already been used to check in. Please verify your location again.",
+        error: isSapDuplicate
+          ? `Attendance has already been recorded for SAP ID ${input.sapId}.`
+          : "This location verification has already been used to check in. Please verify your location again.",
       };
     }
     throw err;

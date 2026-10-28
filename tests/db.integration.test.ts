@@ -132,6 +132,30 @@ describe.skipIf(!TEST_URL)("database (integration)", () => {
     expect(await count("submissions")).toBe(1); // the failed insert left nothing behind
   });
 
+  it("rejects a second check-in with the same sapId (23505)", async () => {
+    const first = checkIn({ sapId: "500099999" });
+    await dbmod.insertSubmission(first);
+    // Different verificationId, same sapId
+    await expect(dbmod.insertSubmission(checkIn({ sapId: "500099999" }))).rejects.toMatchObject({
+      code: "23505",
+    });
+    expect(await count("submissions")).toBe(1);
+  });
+
+  it("concurrent submissions with the same sapId only allow exactly one to succeed", async () => {
+    const duplicateSapId = "500088888";
+    const submissions = [
+      checkIn({ sapId: duplicateSapId, name: "Student 1" }),
+      checkIn({ sapId: duplicateSapId, name: "Student 2" }),
+    ];
+    const results = await Promise.allSettled(submissions.map((s) => dbmod.insertSubmission(s)));
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(1);
+    expect(await count("submissions")).toBe(1);
+  });
+
   it("clearAllSubmissions deletes every record, returns the exact count and writes an audit entry", async () => {
     for (let i = 0; i < 3; i++) await dbmod.insertSubmission(checkIn());
     const deleted = await dbmod.clearAllSubmissions("master");

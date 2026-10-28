@@ -7,8 +7,8 @@ import { createRateLimiter } from "@/lib/rate-limit";
 import { clientIp, hashIp } from "@/lib/request";
 import type { CheckInResponse } from "@/types/submission";
 
-// Generous: university campus Wi-Fi often shares one public NAT IP for hundreds of students.
-const limiter = createRateLimiter({ limit: 2000, windowMs: 10 * 60 * 1000 });
+// Generous: university campus Wi-Fi shares one public NAT IP for 2,450+ students.
+const limiter = createRateLimiter({ limit: 20000, windowMs: 10 * 60 * 1000 });
 
 /**
  * Step 2 of attendance: validate employee details, verify the signed location

@@ -18,7 +18,7 @@ export function db(): postgres.Sql {
     const url = getDatabaseUrl();
     globalForDb.sql = postgres(url, {
       ...connectionOptions(url),
-      max: 5,
+      max: Number(process.env.PGMAXCONNECTIONS || 20),
       idle_timeout: 20,
       connect_timeout: 10,
       transform: postgres.camel, // snake_case columns → camelCase fields
@@ -42,8 +42,9 @@ const COLUMNS = (sql: postgres.Sql | postgres.TransactionSql) => sql`
  */
 export async function insertSubmission(s: NewSubmission): Promise<Submission> {
   return db().begin(async (sql) => {
-    // Housekeeping first, outside the locked section, so it never lengthens the lock hold.
-    if (s.verificationId) {
+    // Housekeeping: prune expired verifications probabilistically (~2% of inserts)
+    // outside the locked section, avoiding severe table-lock contention during concurrent bursts.
+    if (s.verificationId && Math.random() < 0.02) {
       await sql`DELETE FROM used_verifications WHERE expires_at < now() - interval '1 hour'`;
     }
     // Never wait more than 10 s for the lock (e.g. behind a stuck open/close); fail instead.
