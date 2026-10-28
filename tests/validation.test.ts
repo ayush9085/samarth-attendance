@@ -30,6 +30,9 @@ describe("studentSchema / employeeSchema", () => {
     course: "B.Tech",
     specialization: "Computer Science",
     batch: "2022-2026",
+    eventRating: 5,
+    contentRelevance: 4,
+    suggestions: "Great session",
   };
   const errorsFor = (input: Record<string, unknown>) => {
     const r = employeeSchema.safeParse(input);
@@ -41,12 +44,14 @@ describe("studentSchema / employeeSchema", () => {
   });
 
   it("requires every field: empty → '<Field> is required.'", () => {
-    expect(errorsFor({ name: "", sapId: "", course: "", specialization: "", batch: "" })).toEqual({
+    expect(errorsFor({ name: "", sapId: "", course: "", specialization: "", batch: "", eventRating: "", contentRelevance: "" })).toEqual({
       name: "Student Name is required.",
       sapId: "SAP ID is required.",
       course: "Course is required.",
       specialization: "Specialization is required.",
       batch: "Batch is required.",
+      eventRating: "Overall event quality rating is required.",
+      contentRelevance: "Content relevance rating is required.",
     });
   });
 
@@ -101,6 +106,9 @@ describe("studentSchema / employeeSchema", () => {
       course: " B.Tech ",
       specialization: " Artificial Intelligence ",
       batch: " 2022-2026 ",
+      eventRating: 5,
+      contentRelevance: 4,
+      suggestions: "  Great session!  ",
     });
     expect(r).toEqual({
       name: "K. Ramesh",
@@ -108,6 +116,9 @@ describe("studentSchema / employeeSchema", () => {
       course: "B.Tech",
       specialization: "Artificial Intelligence",
       batch: "2022-2026",
+      eventRating: 5,
+      contentRelevance: 4,
+      suggestions: "Great session!",
     });
   });
 });

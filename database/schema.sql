@@ -65,6 +65,9 @@ ALTER TABLE submissions ADD COLUMN IF NOT EXISTS sap_id          text CHECK (cha
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS course          text CHECK (char_length(course) BETWEEN 1 AND 100);
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS specialization  text CHECK (char_length(specialization) BETWEEN 1 AND 100);
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS batch           text CHECK (char_length(batch) BETWEEN 1 AND 50);
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS event_rating   integer CHECK (event_rating BETWEEN 1 AND 5);
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS content_relevance integer CHECK (content_relevance BETWEEN 1 AND 5);
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS suggestions     text CHECK (char_length(suggestions) <= 1000);
 -- One server-issued location verification = one check-in (prevents token replay)
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS verification_id uuid UNIQUE;
 

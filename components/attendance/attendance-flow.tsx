@@ -36,7 +36,24 @@ type Phase =
 
 const GEO_OPTIONS: PositionOptions = { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 };
 
-const EMPTY_FORM: Record<EmployeeField, string> = { name: "", sapId: "", course: "", specialization: "", batch: "" };
+const RATING_OPTIONS = [
+  { value: "1", label: "Average" },
+  { value: "2", label: "Good" },
+  { value: "3", label: "Very Good" },
+  { value: "4", label: "Outstanding" },
+  { value: "5", label: "Excellent" },
+] as const;
+
+const EMPTY_FORM: Record<EmployeeField, string> = {
+  name: "",
+  sapId: "",
+  course: "",
+  specialization: "",
+  batch: "",
+  eventRating: "",
+  contentRelevance: "",
+  suggestions: "",
+};
 const FIELDS = Object.keys(EMPTY_FORM) as EmployeeField[];
 
 function geolocationErrorMessage(err: GeolocationPositionError): string {
@@ -212,12 +229,22 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
     }
   }
 
-  const set = (field: EmployeeField) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const set = (field: EmployeeField) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const val = e.target.value;
     setForm((f) => ({ ...f, [field]: val }));
     if (touched.has(field)) {
       setErrors((errs) => ({ ...errs, [field]: validateEmployeeField(field, val) ?? "" }));
     }
+  };
+
+  const setRating = (field: "eventRating" | "contentRelevance", val: string) => {
+    setForm((f) => ({ ...f, [field]: val }));
+    setTouched((t) => new Set(t).add(field));
+    setErrors((errs) => {
+      const updated = { ...errs };
+      delete updated[field];
+      return updated;
+    });
   };
 
   const blur = (field: EmployeeField) => () => {
@@ -614,6 +641,102 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
                   aria-describedby={errors.batch ? "batch-error" : undefined}
                 />
               </Field>
+
+              {/* Feedback Section */}
+              <div className="pt-4 border-t border-border/80 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-6 items-center justify-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-xs">
+                    ★
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Session Feedback
+                    </h4>
+                    <p className="text-[11px] text-muted">
+                      Please rate your experience for the ice breaking session
+                    </p>
+                  </div>
+                </div>
+
+                {/* Q1: Overall Quality */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    Q1. How would you rate the overall quality of the event? <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                    {RATING_OPTIONS.map((opt) => {
+                      const isSelected = form.eventRating === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setRating("eventRating", opt.value)}
+                          className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border text-center transition-all cursor-pointer ${
+                            isSelected
+                              ? "border-sky-600 bg-sky-50 dark:bg-sky-950/60 text-sky-900 dark:text-sky-200 ring-2 ring-sky-500/30 font-bold shadow-xs scale-[1.02]"
+                              : "border-border/80 bg-surface hover:bg-slate-50 dark:hover:bg-slate-900/60 text-slate-700 dark:text-slate-300"
+                          }`}
+                        >
+                          <span className="text-base font-extrabold">{opt.value}</span>
+                          <span className="text-[9px] sm:text-[10px] leading-tight font-medium mt-0.5">{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {errors.eventRating && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{errors.eventRating}</p>
+                  )}
+                </div>
+
+                {/* Q5: Content Relevance */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    Q5. Did you find the content relevant and informative? <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                    {RATING_OPTIONS.map((opt) => {
+                      const isSelected = form.contentRelevance === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setRating("contentRelevance", opt.value)}
+                          className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border text-center transition-all cursor-pointer ${
+                            isSelected
+                              ? "border-sky-600 bg-sky-50 dark:bg-sky-950/60 text-sky-900 dark:text-sky-200 ring-2 ring-sky-500/30 font-bold shadow-xs scale-[1.02]"
+                              : "border-border/80 bg-surface hover:bg-slate-50 dark:hover:bg-slate-900/60 text-slate-700 dark:text-slate-300"
+                          }`}
+                        >
+                          <span className="text-base font-extrabold">{opt.value}</span>
+                          <span className="text-[9px] sm:text-[10px] leading-tight font-medium mt-0.5">{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {errors.contentRelevance && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{errors.contentRelevance}</p>
+                  )}
+                </div>
+
+                {/* Q11: Suggestions, if any */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="suggestions" className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Q11. Suggestions, if any
+                    </label>
+                    <span className="text-[10px] text-muted">Optional</span>
+                  </div>
+                  <textarea
+                    id="suggestions"
+                    rows={3}
+                    className="input resize-none py-2 text-xs"
+                    maxLength={1000}
+                    placeholder="Any suggestions, ideas, or feedback for upcoming sessions..."
+                    value={form.suggestions}
+                    onChange={set("suggestions")}
+                  />
+                </div>
+              </div>
 
               {formError && (
                 <div role="alert" className="rounded-xl border border-rose-300 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300">

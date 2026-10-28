@@ -76,6 +76,16 @@ const orgText = (label: string, max: number) =>
     .refine((s) => ORG_TEXT.test(s), `${label} may only contain letters, numbers, spaces and . , & ( ) ' / : -`)
     .refine((s) => /\p{L}/u.test(s), `${label} must contain letters.`);
 
+const rating = (label: string) =>
+  z.preprocess((val) => {
+    if (typeof val === "number") return val;
+    if (typeof val === "string" && val.trim().length > 0) {
+      const match = val.trim().match(/^([1-5])/);
+      if (match) return Number(match[1]);
+    }
+    return val;
+  }, z.number({ error: `${label} is required.` }).int().min(1, `${label} is required.`).max(5, `${label} must be between 1 and 5.`));
+
 /** Step 2 — student details, shown only after the server verified the location. All fields are required. */
 export const studentSchema = z.object({
   name: text("Student Name", 2, 100).refine(
@@ -92,13 +102,21 @@ export const studentSchema = z.object({
     (s) => /^[\p{L}\p{N}\s/:\-()]+$/u.test(s),
     "Batch may only contain letters, numbers, spaces, parentheses, hyphens, colons and slashes.",
   ),
+  eventRating: rating("Overall event quality rating"),
+  contentRelevance: rating("Content relevance rating"),
+  suggestions: z
+    .string()
+    .transform((s) => s.normalize("NFKC").trim())
+    .pipe(z.string().max(1000, "Suggestions must be at most 1000 characters."))
+    .optional()
+    .default(""),
 });
 
 export type StudentInput = z.infer<typeof studentSchema>;
 export type StudentField = keyof typeof studentSchema.shape;
 
 /** Validate one student field (for as-you-type feedback). Returns the error message or null. */
-export function validateStudentField(field: StudentField, value: string): string | null {
+export function validateStudentField(field: StudentField, value: unknown): string | null {
   const r = studentSchema.shape[field].safeParse(value);
   return r.success ? null : (r.error.issues[0]?.message ?? "Invalid value.");
 }

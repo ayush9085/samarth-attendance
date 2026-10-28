@@ -30,7 +30,8 @@ export function db(): postgres.Sql {
 const MAX_PAGE_SIZE = 200;
 
 const COLUMNS = (sql: postgres.Sql | postgres.TransactionSql) => sql`
-  id, name, sap_id, course, specialization, batch, designation, institution, email, mobile, department, member_id,
+  id, name, sap_id, course, specialization, batch, event_rating, content_relevance, suggestions,
+  designation, institution, email, mobile, department, member_id,
   latitude, longitude, accuracy_m, position_captured_at, distance_m, geofence_status, low_accuracy,
   target_latitude, target_longitude, radius_m, client_distance_m, verification_id, user_agent, created_at`;
 
@@ -68,12 +69,14 @@ async function insertSubmissionRow(sql: postgres.TransactionSql, s: NewSubmissio
   const [row] = await sql<Submission[]>`
     INSERT INTO submissions (
       name, sap_id, course, specialization, batch,
+      event_rating, content_relevance, suggestions,
       designation, institution, email, mobile,
       latitude, longitude, accuracy_m, position_captured_at,
       distance_m, geofence_status, low_accuracy, target_latitude, target_longitude, radius_m,
       client_distance_m, verification_id, user_agent, ip_hash
     ) VALUES (
       ${s.name}, ${s.sapId ?? null}, ${s.course ?? null}, ${s.specialization ?? null}, ${s.batch ?? null},
+      ${s.eventRating ?? null}, ${s.contentRelevance ?? null}, ${s.suggestions || null},
       ${s.designation ?? null}, ${s.institution ?? null}, ${s.email ?? null}, ${s.mobile ?? null},
       ${s.latitude}, ${s.longitude}, ${s.accuracyM}, ${s.positionCapturedAt},
       ${s.distanceM}, ${s.geofenceStatus}, ${s.lowAccuracy},

@@ -12,6 +12,9 @@ export interface Submission {
   course?: string | null;
   specialization?: string | null;
   batch?: string | null;
+  eventRating?: number | null;
+  contentRelevance?: number | null;
+  suggestions?: string | null;
   designation?: string | null;
   institution?: string | null;
   email?: string | null;

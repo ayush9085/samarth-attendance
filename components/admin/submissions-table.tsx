@@ -67,6 +67,28 @@ function Details({ r }: { r: Submission }) {
         <dd>
           {r.targetLatitude.toFixed(6)}, {r.targetLongitude.toFixed(6)} · {r.radiusM} m
         </dd>
+        {r.eventRating && (
+          <>
+            <dt className="text-muted">Q1 Quality</dt>
+            <dd className="font-semibold text-slate-900 dark:text-white">
+              {r.eventRating} / 5 ({["", "Average", "Good", "Very Good", "Outstanding", "Excellent"][r.eventRating] ?? ""})
+            </dd>
+          </>
+        )}
+        {r.contentRelevance && (
+          <>
+            <dt className="text-muted">Q5 Content</dt>
+            <dd className="font-semibold text-slate-900 dark:text-white">
+              {r.contentRelevance} / 5 ({["", "Average", "Good", "Very Good", "Outstanding", "Excellent"][r.contentRelevance] ?? ""})
+            </dd>
+          </>
+        )}
+        {r.suggestions && (
+          <>
+            <dt className="text-muted">Suggestions</dt>
+            <dd className="italic text-slate-800 dark:text-slate-200 break-words">{r.suggestions}</dd>
+          </>
+        )}
         {isLegacy(r) && (
           <>
             <dt className="text-muted">Record type</dt>

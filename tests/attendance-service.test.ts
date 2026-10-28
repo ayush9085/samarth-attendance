@@ -39,6 +39,9 @@ const EMPLOYEE = {
   course: "B.Tech",
   specialization: "Computer Science",
   batch: "2022-2026",
+  eventRating: 5,
+  contentRelevance: 5,
+  suggestions: "Informative",
 };
 const META = { userAgent: "vitest", ipHash: "abc" };
 
