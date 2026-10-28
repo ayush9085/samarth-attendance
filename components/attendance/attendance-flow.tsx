@@ -11,8 +11,8 @@ type Phase =
   | { k: "idle"; notice?: string }
   | { k: "locating" }
   | { k: "verifying" }
-  | { k: "error"; message: string }
   | { k: "outside"; distance: number; radius: number; accuracy: number }
+  | { k: "error"; message: string }
   | {
       k: "verified";
       distance: number;
@@ -29,6 +29,8 @@ type Phase =
       course: string;
       specialization: string;
       batch: string;
+      eventRating: string;
+      contentRelevance: string;
       createdAt: string;
       refId: string;
     }
@@ -59,11 +61,11 @@ const FIELDS = Object.keys(EMPTY_FORM) as EmployeeField[];
 function geolocationErrorMessage(err: GeolocationPositionError): string {
   switch (err.code) {
     case err.PERMISSION_DENIED:
-      return "Location permission denied. Please allow location access for this site in your browser settings (tap the lock/ⓘ icon next to URL) and try again.";
+      return "Location permission denied. Please allow location access in your browser settings and try again.";
     case err.POSITION_UNAVAILABLE:
-      return "GPS signal unavailable. Ensure location/GPS services are turned on on your device and try again.";
+      return "GPS signal unavailable. Ensure location/GPS is enabled on your device.";
     case err.TIMEOUT:
-      return "GPS detection timed out. Move closer to a window or outdoors and try again.";
+      return "GPS detection timed out. Move closer to a window or outdoors and retry.";
     default:
       return "Unable to determine your GPS location. Please try again.";
   }
@@ -74,7 +76,11 @@ function getPosition(): Promise<GeolocationPosition> {
 }
 
 function timeLabel(iso: string) {
-  return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return new Date(iso).toLocaleString("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Kolkata",
+  });
 }
 
 export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
@@ -113,7 +119,7 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
       });
       const data = (await res.json().catch(() => null)) as VerifyResponse | null;
       if (!data || !data.ok) {
-        setPhase({ k: "error", message: data?.error || "Unable to verify test location." });
+        setPhase({ k: "error", message: data?.error || "Unable to verify location." });
         return;
       }
       if (data.status === "WITHIN_RANGE" && data.verificationToken && data.expiresAt) {
@@ -128,11 +134,11 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
         });
       }
     } catch {
-      setPhase({ k: "error", message: "Error simulating venue location." });
+      setPhase({ k: "error", message: "Error verifying test location." });
     }
   }
 
-  // Auto-unlock form if ?bypass=1 or ?test=1 in URL or ?dev=1
+  // Auto-bypass if ?bypass=1 or ?test=1 in URL
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -147,14 +153,14 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
     if (!window.isSecureContext) {
       setPhase({
         k: "error",
-        message: "Location is only available over a secure (HTTPS or localhost) connection. Please check your URL.",
+        message: "Location access requires an HTTPS or localhost connection.",
       });
       return;
     }
     if (!("geolocation" in navigator)) {
       setPhase({
         k: "error",
-        message: "Your browser does not support location services. Please open in Chrome, Safari, Firefox, or Edge.",
+        message: "Your browser does not support geolocation. Please open this page in Chrome, Safari, or Edge.",
       });
       return;
     }
@@ -208,7 +214,7 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
     } catch {
       setPhase({
         k: "error",
-        message: "Unable to connect to the attendance verification server. Check your internet connection and try again.",
+        message: "Unable to connect to verification server. Please check your network connection and retry.",
       });
     }
   }
@@ -246,11 +252,11 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
         } else if (data.code === "ALREADY_USED") {
           setPhase({
             k: "idle",
-            notice: "This check-in was already processed. Verify location again if you need to re-submit.",
+            notice: "This attendance record was already submitted.",
           });
         } else if (data.fieldErrors) {
           setErrors(data.fieldErrors);
-          setFormError("Please correct the highlighted fields below.");
+          setFormError("Please complete all required fields correctly.");
         } else {
           setFormError(data.error);
         }
@@ -264,11 +270,13 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
         course: form.course,
         specialization: form.specialization,
         batch: form.batch,
+        eventRating: form.eventRating,
+        contentRelevance: form.contentRelevance,
         createdAt: data.checkIn.createdAt,
         refId: data.checkIn.id,
       });
     } catch {
-      setFormError("Connection error while submitting attendance. Please try again.");
+      setFormError("Network error while submitting attendance. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -299,59 +307,66 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
 
   if (phase.k === "closed") return <AttendanceClosed onRetry={detectLocation} />;
 
-  // ── Success State ───────────────────────────────────────────────────────────
+  // ── Success State: Official Attendance Slip ───────────────────────────────────
   if (phase.k === "done") {
     return (
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-surface p-6 sm:p-8 shadow-xl backdrop-blur-md">
-        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500" />
-        
-        <section aria-live="polite" className="space-y-6 text-center">
-          <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 ring-8 ring-emerald-500/5">
-            <svg viewBox="0 0 24 24" className="size-10" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-            </svg>
-          </div>
-
-          <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-              <span className="size-1.5 rounded-full bg-emerald-500" />
-              Verified & Recorded
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs">
+        <section aria-live="polite" className="space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                <span>✓</span> Recorded Successfully
+              </span>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-1">
+                Official Attendance Slip
+              </h2>
             </div>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Attendance Submitted!
-            </h2>
-            <p className="mt-1 text-sm text-muted">
-              SAMARTH INTERNSHIP 3.0 · Ice Breaking Session
-            </p>
-          </div>
-
-          {/* Student Receipt Card */}
-          <div className="rounded-2xl border border-border/80 bg-slate-50/70 dark:bg-slate-900/60 p-4 sm:p-5 text-left text-sm space-y-3">
-            <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted">Student Name</span>
-              <span className="font-bold text-slate-900 dark:text-white">{phase.name}</span>
-            </div>
-            <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted">SAP ID</span>
-              <span className="font-mono font-bold text-sky-700 dark:text-sky-300">{phase.sapId}</span>
-            </div>
-            <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted">Course & Spec.</span>
-              <span className="font-medium text-slate-800 dark:text-slate-200">{phase.course} · {phase.specialization}</span>
-            </div>
-            <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted">Batch</span>
-              <span className="font-medium text-slate-800 dark:text-slate-200">{phase.batch}</span>
-            </div>
-            <div className="flex items-center justify-between pt-0.5">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted">Check-In Time</span>
-              <span className="tabular font-medium text-slate-800 dark:text-slate-200">{timeLabel(phase.createdAt)}</span>
+            <div className="text-right">
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block">
+                Ref: {phase.refId.slice(0, 8).toUpperCase()}
+              </span>
+              <span className="text-[11px] text-slate-400 block">
+                {timeLabel(phase.createdAt)}
+              </span>
             </div>
           </div>
 
-          <p className="text-xs text-muted">
-            Ref ID: <span className="font-mono text-slate-700 dark:text-slate-300">{phase.refId.slice(0, 8)}...</span> · You may now close this page.
-          </p>
+          <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 divide-y divide-slate-200 dark:divide-slate-800 text-xs">
+            <div className="flex justify-between px-3.5 py-2.5">
+              <span className="text-slate-500 font-medium">Student Name</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{phase.name}</span>
+            </div>
+            <div className="flex justify-between px-3.5 py-2.5">
+              <span className="text-slate-500 font-medium">SAP ID</span>
+              <span className="font-mono font-semibold text-slate-900 dark:text-white">{phase.sapId}</span>
+            </div>
+            <div className="flex justify-between px-3.5 py-2.5">
+              <span className="text-slate-500 font-medium">Course & Specialization</span>
+              <span className="font-semibold text-slate-900 dark:text-white">
+                {phase.course} · {phase.specialization}
+              </span>
+            </div>
+            <div className="flex justify-between px-3.5 py-2.5">
+              <span className="text-slate-500 font-medium">Batch</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{phase.batch}</span>
+            </div>
+            <div className="flex justify-between px-3.5 py-2.5">
+              <span className="text-slate-500 font-medium">Session</span>
+              <span className="font-semibold text-slate-900 dark:text-white">
+                SAMARTH INTERNSHIP 3.0 — Ice Breaking
+              </span>
+            </div>
+            <div className="flex justify-between px-3.5 py-2.5">
+              <span className="text-slate-500 font-medium">Venue Geofence</span>
+              <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                Verified within 100m
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 dark:border-slate-800 p-3.5 text-center text-xs text-slate-500">
+            Your attendance has been recorded in the UPES database. You may now close this tab.
+          </div>
         </section>
       </div>
     );
@@ -360,135 +375,85 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
   const isVerified = phase.k === "verified";
 
   return (
-    <div className="space-y-5">
-      {/* Step Tracker */}
-      <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
-        <div
-          className={`flex items-center gap-2 rounded-xl border p-2.5 transition-all ${
-            isVerified
-              ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300"
-              : "border-sky-500/50 bg-sky-500/10 text-sky-800 dark:text-sky-300 ring-2 ring-sky-500/15"
-          }`}
-        >
-          <div
-            className={`flex size-6 items-center justify-center rounded-full text-xs font-bold ${
-              isVerified ? "bg-emerald-500 text-white" : "bg-sky-600 text-white"
-            }`}
-          >
+    <div className="space-y-4">
+      {/* Enterprise Stepper */}
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 text-xs">
+        <div className={`flex items-center gap-2 ${!isVerified ? "text-[#003a70] dark:text-sky-400 font-semibold" : "text-emerald-700 dark:text-emerald-400 font-medium"}`}>
+          <span className={`flex size-5 items-center justify-center rounded-full text-[11px] font-bold ${!isVerified ? "bg-[#003a70] text-white dark:bg-sky-500" : "bg-emerald-600 text-white"}`}>
             {isVerified ? "✓" : "1"}
-          </div>
-          <div className="min-w-0">
-            <div className="truncate font-bold">Step 1</div>
-            <div className="text-[11px] font-normal text-muted truncate">Campus Geofence</div>
-          </div>
+          </span>
+          <span>1. Geofence Verification</span>
         </div>
-
-        <div
-          className={`flex items-center gap-2 rounded-xl border p-2.5 transition-all ${
-            isVerified
-              ? "border-sky-500/50 bg-sky-500/10 text-sky-800 dark:text-sky-300 ring-2 ring-sky-500/15"
-              : "border-border/70 bg-surface/50 text-muted opacity-60"
-          }`}
-        >
-          <div
-            className={`flex size-6 items-center justify-center rounded-full text-xs font-bold ${
-              isVerified ? "bg-sky-600 text-white" : "bg-slate-200 dark:bg-slate-800 text-slate-600"
-            }`}
-          >
+        <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800 mx-3" />
+        <div className={`flex items-center gap-2 ${isVerified ? "text-[#003a70] dark:text-sky-400 font-semibold" : "text-slate-400"}`}>
+          <span className={`flex size-5 items-center justify-center rounded-full text-[11px] font-bold ${isVerified ? "bg-[#003a70] text-white dark:bg-sky-500" : "bg-slate-200 dark:bg-slate-800 text-slate-500"}`}>
             2
-          </div>
-          <div className="min-w-0">
-            <div className="truncate font-bold">Step 2</div>
-            <div className="text-[11px] font-normal text-muted truncate">Attendance Form</div>
-          </div>
+          </span>
+          <span>2. Attendance & Feedback</span>
         </div>
       </div>
 
       {/* Step 1: Geofence Verification Card */}
       {!isVerified && (
-        <div className="relative overflow-hidden rounded-3xl border border-border/90 bg-surface/95 p-6 sm:p-8 shadow-lg backdrop-blur-md">
-          <div className="absolute inset-x-0 top-0 h-1.5 brand-stripe opacity-90" />
-
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs space-y-5">
           {(phase.k === "idle" || phase.k === "error") && (
-            <div className="space-y-6 text-center">
-              {/* Radar Icon with animated ripples */}
-              <div className="relative mx-auto flex size-20 items-center justify-center">
-                <span className="absolute inset-0 size-full animate-ping rounded-full bg-sky-400/20" />
-                <span className="absolute inset-2 size-16 rounded-full bg-sky-500/15" />
-                <div className="relative flex size-12 items-center justify-center rounded-full bg-gradient-to-tr from-[#005ea6] to-[#0284c7] text-white shadow-md">
-                  <PinIcon />
-                </div>
+            <div className="space-y-5 text-center">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-[#003a70] dark:text-sky-400">
+                <PinIcon />
               </div>
 
-              <div>
-                <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                  Location Check Required
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Venue Presence Verification
                 </h3>
-                <p className="mt-1 text-sm text-muted max-w-sm mx-auto">
-                  To prevent proxy attendance, verify you are within <span className="font-semibold text-slate-900 dark:text-white">{radiusMeters} meters</span> of the session venue.
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                  To register attendance, verify that you are within the authorized event perimeter (<span className="font-semibold text-slate-800 dark:text-slate-200">{radiusMeters} meters</span> of the UPES venue).
                 </p>
               </div>
 
-              {/* Status / Notice */}
+              {/* Status Notice */}
               {phase.k === "idle" && phase.notice && (
-                <div role="status" className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3.5 text-xs text-amber-800 dark:text-amber-200">
+                <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-800 dark:text-amber-200 text-left">
                   {phase.notice}
                 </div>
               )}
               {phase.k === "error" && (
-                <div role="alert" className="rounded-xl border border-rose-300/60 bg-rose-500/10 p-3.5 text-xs text-rose-800 dark:text-rose-200">
+                <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/30 p-3 text-xs text-rose-800 dark:text-rose-200 text-left">
                   {phase.message}
                 </div>
               )}
 
-              {/* Perks / Points */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-left text-xs text-slate-600 dark:text-slate-400 pt-1">
-                <div className="rounded-xl border border-border/70 bg-slate-50/60 dark:bg-slate-900/40 p-2.5">
-                  <div className="font-semibold text-slate-900 dark:text-white">📍 100m Geofence</div>
-                  <div className="text-[11px] text-muted mt-0.5">Campus hall boundary</div>
-                </div>
-                <div className="rounded-xl border border-border/70 bg-slate-50/60 dark:bg-slate-900/40 p-2.5">
-                  <div className="font-semibold text-slate-900 dark:text-white">🔒 1-Tap Secure</div>
-                  <div className="text-[11px] text-muted mt-0.5">Read once; zero tracking</div>
-                </div>
-                <div className="rounded-xl border border-border/70 bg-slate-50/60 dark:bg-slate-900/40 p-2.5">
-                  <div className="font-semibold text-slate-900 dark:text-white">⚡ Instant Unlock</div>
-                  <div className="text-[11px] text-muted mt-0.5">Access form immediately</div>
-                </div>
+              <div className="space-y-2 pt-2">
+                <button
+                  type="button"
+                  onClick={detectLocation}
+                  className="btn-primary w-full py-2.5 text-sm font-semibold"
+                >
+                  {phase.k === "error" ? "Retry Location Check" : "Verify Location & Proceed"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={simulateVenueLocation}
+                  className="w-full py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                >
+                  Test Mode: Skip Geofence Check
+                </button>
               </div>
-
-              <button
-                type="button"
-                onClick={detectLocation}
-                className="btn-primary w-full py-3.5 text-base shadow-md font-bold"
-              >
-                <PinIcon /> {phase.k === "error" ? "Retry Location Check" : "Detect My Location & Unlock Form"}
-              </button>
-
-              <button
-                type="button"
-                onClick={simulateVenueLocation}
-                className="w-full py-2.5 px-3 rounded-xl border border-dashed border-sky-400/80 bg-sky-50/70 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 font-bold text-xs hover:bg-sky-100/90 dark:hover:bg-sky-900/60 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-              >
-                <span className="text-amber-500 text-sm">⚡</span>
-                <span>Open Form Directly (Skip Geofence / Test Mode)</span>
-              </button>
             </div>
           )}
 
           {(phase.k === "locating" || phase.k === "verifying") && (
-            <div aria-live="polite" className="flex flex-col items-center gap-4 py-8 text-center">
-              <div className="relative">
-                <Spinner className="size-12 border-4 border-sky-600 dark:border-sky-400" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-lg font-bold text-slate-900 dark:text-white">
-                  {phase.k === "locating" ? "Acquiring GPS Signal…" : "Verifying with Campus Geofence…"}
+            <div aria-live="polite" className="flex flex-col items-center gap-3 py-6 text-center">
+              <Spinner className="size-8 text-[#003a70] dark:text-sky-400" />
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  {phase.k === "locating" ? "Acquiring GPS Signal…" : "Validating Campus Geofence…"}
                 </p>
-                <p className="text-xs text-muted max-w-xs mx-auto">
+                <p className="text-xs text-slate-500">
                   {phase.k === "locating"
-                    ? "Please tap “Allow” if your browser asks for location permission."
-                    : "Validating physical coordinates against UPES session hall coordinates."}
+                    ? "Please grant location access when prompted by your browser."
+                    : "Verifying physical coordinates against UPES event venue coordinates."}
                 </p>
               </div>
             </div>
@@ -496,52 +461,45 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
 
           {phase.k === "outside" && (
             <div role="alert" className="space-y-4 text-center">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-rose-500/10 text-rose-600">
-                <svg viewBox="0 0 24 24" className="size-8" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path strokeLinecap="round" d="m15 9-6 6m0-6 6 6" />
-                </svg>
+              <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-950/50 text-rose-600">
+                <span className="text-lg font-bold">!</span>
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-rose-700 dark:text-rose-400">
-                  Location Verification Failed
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-rose-800 dark:text-rose-400">
+                  Location Outside Authorized Area
                 </h3>
-                <p className="mt-1 text-xs text-muted">
-                  You are outside the authorized session area.
+                <p className="text-xs text-slate-500">
+                  You are outside the required session geofence.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 p-4 text-xs space-y-2 text-left">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-3 text-xs space-y-1.5 text-left">
                 <div className="flex justify-between">
-                  <span className="text-muted">Detected Distance:</span>
-                  <span className="font-bold text-rose-600">{formatDistance(phase.distance)}</span>
+                  <span className="text-slate-500">Detected Distance:</span>
+                  <span className="font-semibold text-rose-600">{formatDistance(phase.distance)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted">Required Radius:</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">within {phase.radius} meters</span>
+                  <span className="text-slate-500">Allowed Perimeter:</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200">within {phase.radius} meters</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted">GPS Accuracy:</span>
+                  <span className="text-slate-500">GPS Accuracy:</span>
                   <span className="font-mono text-slate-800 dark:text-slate-200">±{Math.round(phase.accuracy)} m</span>
                 </div>
               </div>
 
-              <p className="text-xs text-muted">
-                Make sure you are at the UPES event venue and your GPS accuracy is good.
-              </p>
-
-              <button type="button" onClick={detectLocation} className="btn-secondary w-full py-3 font-semibold">
-                <PinIcon /> Try Detecting Location Again
-              </button>
-
-              <button
-                type="button"
-                onClick={simulateVenueLocation}
-                className="w-full py-2.5 px-3 rounded-xl border border-dashed border-sky-400/80 bg-sky-50/70 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 font-bold text-xs hover:bg-sky-100/90 dark:hover:bg-sky-900/60 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-              >
-                <span className="text-amber-500 text-sm">⚡</span>
-                <span>Open Form Directly (Skip Geofence / Test Mode)</span>
-              </button>
+              <div className="space-y-2 pt-2">
+                <button type="button" onClick={detectLocation} className="btn-secondary w-full py-2.5 text-xs font-semibold">
+                  Retry Location Check
+                </button>
+                <button
+                  type="button"
+                  onClick={simulateVenueLocation}
+                  className="w-full py-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                >
+                  Test Mode: Skip Geofence Check
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -550,175 +508,154 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
       {/* Step 2: The Verified Attendance Form */}
       {isVerified && (
         <div className="space-y-4">
-          {/* Geofence Verified Banner */}
-          <div aria-live="polite" className="relative overflow-hidden rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-sky-500/10 p-4 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-xs">
+          {/* Location Verified Notice */}
+          <div aria-live="polite" className="rounded-lg border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/70 dark:bg-emerald-950/20 px-3.5 py-2.5 text-xs flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex size-4.5 items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-bold">
                 ✓
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-emerald-800 dark:text-emerald-300 text-sm">
-                    Location Verified Successfully
-                  </h4>
-                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
-                    Within Geofence
-                  </span>
-                </div>
-                <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
-                  Distance: <span className="font-semibold text-slate-900 dark:text-white">{formatDistance(phase.distance)}</span> · GPS accuracy ±{Math.round(phase.accuracy)} m
-                </p>
-                <p className="mt-1 text-[11px] text-muted">
-                  Expires at {new Date(phase.expiresAt).toLocaleTimeString(undefined, { timeStyle: "short" })}. Please submit the form before expiry.
-                </p>
-              </div>
+              </span>
+              <span className="font-semibold text-emerald-900 dark:text-emerald-300">
+                Venue Geofence Verified
+              </span>
+              <span className="text-slate-500 dark:text-slate-400">
+                · {formatDistance(phase.distance)} from center
+              </span>
             </div>
+            <span className="text-[11px] text-slate-400">
+              Valid until {new Date(phase.expiresAt).toLocaleTimeString("en-IN", { timeStyle: "short", timeZone: "Asia/Kolkata" })}
+            </span>
           </div>
 
           {/* Form Card */}
-          <div className="relative overflow-hidden rounded-3xl border border-border/90 bg-surface/95 p-6 sm:p-8 shadow-xl backdrop-blur-md">
-            <div className="absolute inset-x-0 top-0 h-1.5 brand-stripe" />
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-xs">
+            <form onSubmit={onCheckIn} noValidate className="space-y-5">
+              {/* Section 1: Student Information */}
+              <div className="space-y-3.5">
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                    Student Details
+                  </h3>
+                </div>
 
-            <form onSubmit={onCheckIn} noValidate className="space-y-4">
-              <div className="border-b border-border/60 pb-3">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Student Attendance Form
-                </h3>
-                <p className="text-xs text-muted mt-0.5">
-                  Enter your official UPES enrollment details to register your attendance.
-                </p>
+                {/* Student Name */}
+                <Field
+                  id="name"
+                  label="Student Full Name"
+                  required
+                  error={errors.name}
+                >
+                  <input
+                    id="name"
+                    className="input"
+                    autoComplete="name"
+                    maxLength={100}
+                    placeholder="e.g. Aarav Sharma"
+                    required
+                    value={form.name}
+                    onChange={set("name")}
+                    onBlur={blur("name")}
+                    aria-required
+                    aria-invalid={!!errors.name}
+                    aria-describedby={errors.name ? "name-error" : undefined}
+                  />
+                </Field>
+
+                {/* SAP ID */}
+                <Field
+                  id="sapId"
+                  label="SAP ID"
+                  required
+                  error={errors.sapId}
+                >
+                  <input
+                    id="sapId"
+                    className="input uppercase font-mono"
+                    maxLength={50}
+                    placeholder="e.g. 500123456"
+                    required
+                    value={form.sapId}
+                    onChange={set("sapId")}
+                    onBlur={blur("sapId")}
+                    aria-required
+                    aria-invalid={!!errors.sapId}
+                    aria-describedby={errors.sapId ? "sapId-error" : undefined}
+                  />
+                </Field>
+
+                {/* Course & Specialization Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field
+                    id="course"
+                    label="Course"
+                    required
+                    error={errors.course}
+                  >
+                    <input
+                      id="course"
+                      className="input"
+                      maxLength={100}
+                      placeholder="e.g. B.Tech, BCA, MCA"
+                      required
+                      value={form.course}
+                      onChange={set("course")}
+                      onBlur={blur("course")}
+                      aria-required
+                      aria-invalid={!!errors.course}
+                      aria-describedby={errors.course ? "course-error" : undefined}
+                    />
+                  </Field>
+
+                  <Field
+                    id="specialization"
+                    label="Specialization"
+                    required
+                    error={errors.specialization}
+                  >
+                    <input
+                      id="specialization"
+                      className="input"
+                      maxLength={100}
+                      placeholder="e.g. AI & ML, Cyber Security, CSE"
+                      required
+                      value={form.specialization}
+                      onChange={set("specialization")}
+                      onBlur={blur("specialization")}
+                      aria-required
+                      aria-invalid={!!errors.specialization}
+                      aria-describedby={errors.specialization ? "specialization-error" : undefined}
+                    />
+                  </Field>
+                </div>
+
+                {/* Batch */}
+                <Field
+                  id="batch"
+                  label="Batch / Year"
+                  required
+                  error={errors.batch}
+                >
+                  <input
+                    id="batch"
+                    className="input"
+                    maxLength={50}
+                    placeholder="e.g. 2023-2027 or Batch A"
+                    required
+                    value={form.batch}
+                    onChange={set("batch")}
+                    onBlur={blur("batch")}
+                    aria-required
+                    aria-invalid={!!errors.batch}
+                    aria-describedby={errors.batch ? "batch-error" : undefined}
+                  />
+                </Field>
               </div>
 
-              {/* Student Name */}
-              <Field
-                id="name"
-                label="Student Name"
-                icon={<UserIcon />}
-                required
-                error={errors.name}
-              >
-                <input
-                  id="name"
-                  className="input pl-10"
-                  autoComplete="name"
-                  maxLength={100}
-                  placeholder="e.g. Rahul Sharma"
-                  required
-                  value={form.name}
-                  onChange={set("name")}
-                  onBlur={blur("name")}
-                  aria-required
-                  aria-invalid={!!errors.name}
-                  aria-describedby={errors.name ? "name-error" : undefined}
-                />
-              </Field>
-
-              {/* SAP ID */}
-              <Field
-                id="sapId"
-                label="SAP ID"
-                icon={<IdIcon />}
-                required
-                error={errors.sapId}
-              >
-                <input
-                  id="sapId"
-                  className="input pl-10 uppercase"
-                  maxLength={50}
-                  placeholder="e.g. 500123456"
-                  required
-                  value={form.sapId}
-                  onChange={set("sapId")}
-                  onBlur={blur("sapId")}
-                  aria-required
-                  aria-invalid={!!errors.sapId}
-                  aria-describedby={errors.sapId ? "sapId-error" : undefined}
-                />
-              </Field>
-
-              {/* Course */}
-              <Field
-                id="course"
-                label="Course"
-                icon={<GraduationIcon />}
-                required
-                error={errors.course}
-              >
-                <input
-                  id="course"
-                  className="input pl-10"
-                  maxLength={100}
-                  placeholder="e.g. B.Tech, BCA, MCA, MBA"
-                  required
-                  value={form.course}
-                  onChange={set("course")}
-                  onBlur={blur("course")}
-                  aria-required
-                  aria-invalid={!!errors.course}
-                  aria-describedby={errors.course ? "course-error" : undefined}
-                />
-              </Field>
-
-              {/* Specialization */}
-              <Field
-                id="specialization"
-                label="Specialization"
-                icon={<BranchIcon />}
-                required
-                error={errors.specialization}
-              >
-                <input
-                  id="specialization"
-                  className="input pl-10"
-                  maxLength={100}
-                  placeholder="e.g. Computer Science, AI & ML, Cyber Security"
-                  required
-                  value={form.specialization}
-                  onChange={set("specialization")}
-                  onBlur={blur("specialization")}
-                  aria-required
-                  aria-invalid={!!errors.specialization}
-                  aria-describedby={errors.specialization ? "specialization-error" : undefined}
-                />
-              </Field>
-
-              {/* Batch */}
-              <Field
-                id="batch"
-                label="Batch"
-                icon={<CalendarIcon />}
-                required
-                error={errors.batch}
-              >
-                <input
-                  id="batch"
-                  className="input pl-10"
-                  maxLength={50}
-                  placeholder="e.g. 2024-2028 or Batch A"
-                  required
-                  value={form.batch}
-                  onChange={set("batch")}
-                  onBlur={blur("batch")}
-                  aria-required
-                  aria-invalid={!!errors.batch}
-                  aria-describedby={errors.batch ? "batch-error" : undefined}
-                />
-              </Field>
-
-              {/* Feedback Section */}
-              <div className="pt-4 border-t border-border/80 space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex size-6 items-center justify-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-xs">
-                    ★
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                      Session Feedback
-                    </h4>
-                    <p className="text-[11px] text-muted">
-                      Please rate your experience for the ice breaking session
-                    </p>
-                  </div>
+              {/* Section 2: Session Feedback */}
+              <div className="space-y-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                    Session Feedback
+                  </h3>
                 </div>
 
                 {/* Q1: Overall Quality */}
@@ -734,14 +671,14 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
                           key={opt.value}
                           type="button"
                           onClick={() => setRating("eventRating", opt.value)}
-                          className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border text-center transition-all cursor-pointer ${
+                          className={`py-2 px-1 rounded-md border text-center transition-colors cursor-pointer ${
                             isSelected
-                              ? "border-sky-600 bg-sky-50 dark:bg-sky-950/60 text-sky-900 dark:text-sky-200 ring-2 ring-sky-500/30 font-bold shadow-xs scale-[1.02]"
-                              : "border-border/80 bg-surface hover:bg-slate-50 dark:hover:bg-slate-900/60 text-slate-700 dark:text-slate-300"
+                              ? "border-[#003a70] bg-[#003a70] text-white dark:border-sky-500 dark:bg-sky-600 font-semibold shadow-2xs"
+                              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60"
                           }`}
                         >
-                          <span className="text-base font-extrabold">{opt.value}</span>
-                          <span className="text-[9px] sm:text-[10px] leading-tight font-medium mt-0.5">{opt.label}</span>
+                          <span className="block text-sm font-bold">{opt.value}</span>
+                          <span className="block text-[10px] leading-tight mt-0.5 truncate">{opt.label}</span>
                         </button>
                       );
                     })}
@@ -764,14 +701,14 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
                           key={opt.value}
                           type="button"
                           onClick={() => setRating("contentRelevance", opt.value)}
-                          className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border text-center transition-all cursor-pointer ${
+                          className={`py-2 px-1 rounded-md border text-center transition-colors cursor-pointer ${
                             isSelected
-                              ? "border-sky-600 bg-sky-50 dark:bg-sky-950/60 text-sky-900 dark:text-sky-200 ring-2 ring-sky-500/30 font-bold shadow-xs scale-[1.02]"
-                              : "border-border/80 bg-surface hover:bg-slate-50 dark:hover:bg-slate-900/60 text-slate-700 dark:text-slate-300"
+                              ? "border-[#003a70] bg-[#003a70] text-white dark:border-sky-500 dark:bg-sky-600 font-semibold shadow-2xs"
+                              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60"
                           }`}
                         >
-                          <span className="text-base font-extrabold">{opt.value}</span>
-                          <span className="text-[9px] sm:text-[10px] leading-tight font-medium mt-0.5">{opt.label}</span>
+                          <span className="block text-sm font-bold">{opt.value}</span>
+                          <span className="block text-[10px] leading-tight mt-0.5 truncate">{opt.label}</span>
                         </button>
                       );
                     })}
@@ -787,14 +724,14 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
                     <label htmlFor="suggestions" className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
                       Q11. Suggestions, if any
                     </label>
-                    <span className="text-[10px] text-muted">Optional</span>
+                    <span className="text-[10px] text-slate-400">Optional</span>
                   </div>
                   <textarea
                     id="suggestions"
                     rows={3}
                     className="input resize-none py-2 text-xs"
                     maxLength={1000}
-                    placeholder="Any suggestions, ideas, or feedback for upcoming sessions..."
+                    placeholder="Enter any suggestions or feedback for future internship sessions..."
                     value={form.suggestions}
                     onChange={set("suggestions")}
                   />
@@ -802,17 +739,17 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
               </div>
 
               {formError && (
-                <div role="alert" className="rounded-xl border border-rose-300 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300">
+                <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/30 p-3 text-xs text-rose-700 dark:text-rose-300">
                   {formError}
                 </div>
               )}
 
               <button
                 type="submit"
-                className="btn-primary w-full py-3.5 text-base font-bold shadow-lg shadow-sky-950/15"
+                className="btn-primary w-full py-3 text-sm font-semibold shadow-xs"
                 disabled={submitting}
               >
-                {submitting ? "Recording Attendance…" : "Confirm & Submit Attendance ✓"}
+                {submitting ? "Submitting Record…" : "Submit Attendance & Feedback"}
               </button>
             </form>
           </div>
@@ -825,38 +762,29 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
 function Field({
   id,
   label,
-  icon,
   required,
   error,
   children,
 }: {
   id: string;
   label: string;
-  icon?: ReactNode;
   required?: boolean;
   error?: string;
   children: ReactNode;
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-xs font-semibold text-slate-800 dark:text-slate-200">
+      <label htmlFor={id} className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
         {label}
         {required && (
-          <span className="text-bad" aria-hidden>
+          <span className="text-rose-600 dark:text-rose-400" aria-hidden>
             {" "}*
           </span>
         )}
       </label>
-      <div className="relative">
-        {icon && (
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted">
-            {icon}
-          </div>
-        )}
-        {children}
-      </div>
+      {children}
       {error && (
-        <p id={`${id}-error`} role="alert" className="mt-1 text-xs text-bad">
+        <p id={`${id}-error`} role="alert" className="mt-1 text-xs text-rose-600 dark:text-rose-400">
           {error}
         </p>
       )}
@@ -869,52 +797,6 @@ function PinIcon() {
     <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
       <path d="M12 21s-7-6.2-7-12a7 7 0 1 1 14 0c0 5.8-7 12-7 12Z" />
       <circle cx="12" cy="9" r="2.5" />
-    </svg>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-    </svg>
-  );
-}
-
-function IdIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect width="18" height="14" x="3" y="5" rx="2" />
-      <circle cx="8" cy="11" r="2" />
-      <path strokeLinecap="round" d="M13 10h4m-4 3h3" />
-    </svg>
-  );
-}
-
-function GraduationIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342" />
-    </svg>
-  );
-}
-
-function BranchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 3v12a3 3 0 0 0 3 3h9M6 9h9a3 3 0 0 1 3 3v6" />
-      <circle cx="6" cy="3" r="2" />
-      <circle cx="18" cy="18" r="2" />
-      <circle cx="18" cy="9" r="2" />
-    </svg>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect width="18" height="18" x="3" y="4" rx="2" />
-      <path strokeLinecap="round" d="M16 2v4M8 2v4M3 10h18" />
     </svg>
   );
 }

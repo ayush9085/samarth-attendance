@@ -67,10 +67,8 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  background-image: radial-gradient(at 0% 0%, rgba(2, 132, 199, 0.05) 0px, transparent 50%),
-                    radial-gradient(at 100% 100%, rgba(225, 29, 72, 0.04) 0px, transparent 50%);
-  background-attachment: fixed;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 @media print {
@@ -81,21 +79,21 @@ body {
 }
 
 @utility input {
-  @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-base text-foreground outline-none transition placeholder:text-muted/60 focus:border-accent focus:ring-4 focus:ring-accent/15 aria-invalid:border-bad shadow-xs;
+  @apply w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-sm text-foreground outline-none placeholder:text-slate-400 focus:border-[#003a70] dark:focus:border-sky-500 focus:ring-2 focus:ring-[#003a70]/15 dark:focus:ring-sky-500/20 aria-invalid:border-bad transition-colors;
 }
 
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-base font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 select-none;
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 select-none;
 }
 @utility btn-primary {
-  @apply btn bg-gradient-to-r from-[#005ea6] via-[#0284c7] to-[#005ea6] bg-[length:200%_auto] text-white shadow-md shadow-sky-950/10 hover:shadow-lg hover:bg-right active:scale-[0.99];
+  @apply btn bg-[#003a70] hover:bg-[#002a52] dark:bg-sky-600 dark:hover:bg-sky-700 text-white shadow-xs;
 }
 @utility btn-secondary {
-  @apply btn border border-border bg-surface text-foreground shadow-2xs hover:bg-slate-100 dark:hover:bg-slate-800/60 active:scale-[0.99];
+  @apply btn border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-foreground shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-700/60;
 }
 
 @utility brand-stripe {
-  background: linear-gradient(90deg, #0284c7 0%, #e11d48 50%, #f59e0b 100%);
+  background: #003a70;
 }
 
 @utility tabular {
