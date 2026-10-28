@@ -3,7 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { getAdminSession } from "@/lib/auth";
-import { clearAllSubmissions, isUndefinedTable, setAttendanceOpen } from "@/lib/db";
+import {
+  clearAllSubmissions,
+  isUndefinedTable,
+  setActiveGeofenceConfig,
+  setAttendanceOpen,
+  type ActiveGeofenceConfig,
+  type DynamicGeofenceSettings,
+} from "@/lib/db";
 import { hasErrorCode, PG } from "@/lib/pg-errors";
 import { redirect } from "next/navigation";
 import { authenticate } from "@/lib/admin-accounts";
@@ -169,4 +176,58 @@ export async function setAttendanceAccepting(open: unknown): Promise<AttendanceT
 export async function logout() {
   (await cookies()).delete(SESSION_COOKIE);
   redirect("/admin/login");
+}
+
+export type GeofenceSettingsResult =
+  | { ok: true; settings: ActiveGeofenceConfig }
+  | { ok: false; code: "UNAUTHENTICATED" | "INVALID" | "SERVER_ERROR"; error: string };
+
+/**
+ * Update dynamic geofence coordinates, radius, or toggle location verification.
+ */
+export async function updateGeofenceSettingsAction(
+  raw: unknown,
+): Promise<GeofenceSettingsResult> {
+  let session;
+  try {
+    session = await getAdminSession();
+  } catch (err) {
+    console.error("[admin] geofence settings: could not check session", err);
+    return { ok: false, code: "SERVER_ERROR", error: "Session validation failed." };
+  }
+  if (!session) {
+    return { ok: false, code: "UNAUTHENTICATED", error: "Your session has expired. Please sign in again." };
+  }
+
+  const s = raw as Partial<DynamicGeofenceSettings> | null;
+  if (!s || typeof s !== "object") {
+    return { ok: false, code: "INVALID", error: "Invalid settings payload." };
+  }
+
+  const enabled = Boolean(s.enabled);
+  const latitude = Number(s.latitude);
+  const longitude = Number(s.longitude);
+  const radiusMeters = Number(s.radiusMeters);
+
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+    return { ok: false, code: "INVALID", error: "Target latitude must be a valid number between -90 and 90." };
+  }
+  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+    return { ok: false, code: "INVALID", error: "Target longitude must be a valid number between -180 and 180." };
+  }
+  if (!Number.isFinite(radiusMeters) || radiusMeters < 5 || radiusMeters > 50000) {
+    return { ok: false, code: "INVALID", error: "Geofence radius must be between 5 meters and 50,000 meters." };
+  }
+
+  try {
+    const updated = await setActiveGeofenceConfig(
+      { enabled, latitude, longitude, radiusMeters },
+      session.sub,
+    );
+    revalidatePath("/admin");
+    return { ok: true, settings: updated };
+  } catch (err) {
+    console.error("[admin] failed to save geofence settings", err);
+    return { ok: false, code: "SERVER_ERROR", error: "Failed to save geofence settings to database." };
+  }
 }

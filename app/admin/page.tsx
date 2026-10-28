@@ -3,13 +3,20 @@ import Link from "next/link";
 import { AttendanceToggle } from "@/components/admin/attendance-toggle";
 import { ClearAllData } from "@/components/admin/clear-all-data";
 import { AdminFilters } from "@/components/admin/filters";
+import { GeofenceSettingsCard } from "@/components/admin/geofence-settings-card";
 import { SubmissionsMap } from "@/components/admin/submissions-map-loader";
 import { SubmissionsTable } from "@/components/admin/submissions-table";
 import { filtersToSearch, parseFilters } from "@/lib/admin-filters";
 import { requireAdmin } from "@/lib/auth";
-import { getGeofenceConfig } from "@/lib/config";
 import { formatDateTime } from "@/lib/datetime";
-import { getAttendanceStatus, getLastClearAll, getStats, listInstitutions, listSubmissions } from "@/lib/db";
+import {
+  getActiveGeofenceConfig,
+  getAttendanceStatus,
+  getLastClearAll,
+  getStats,
+  listInstitutions,
+  listSubmissions,
+} from "@/lib/db";
 import { logout } from "./actions";
 
 export const metadata: Metadata = { title: "Admin dashboard", robots: { index: false, follow: false } };
@@ -17,7 +24,7 @@ export const metadata: Metadata = { title: "Admin dashboard", robots: { index: f
 export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   const session = await requireAdmin();
   const filters = parseFilters(await searchParams);
-  const geofence = getGeofenceConfig();
+  const geofence = await getActiveGeofenceConfig();
 
   const [stats, institutions, result, lastClear, attendance] = await Promise.all([
     getStats(),
@@ -54,7 +61,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
             <h1 className="text-2xl font-bold tracking-tight">SAMARTH INTERNSHIP 3.0</h1>
             <p className="text-xs text-muted">
               Target: {geofence.target.latitude.toFixed(6)}, {geofence.target.longitude.toFixed(6)} · radius{" "}
-              {geofence.radiusMeters} m
+              {geofence.radiusMeters} m · geofence {geofence.enabled ? "enforced" : "disabled"}
             </p>
             {lastClear && (
               <p className="text-xs text-muted">
@@ -90,6 +97,8 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
             : null
         }
       />
+
+      <GeofenceSettingsCard initialConfig={geofence} />
 
       <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Summary">
         <Stat label="Total check-ins" value={stats.total} />

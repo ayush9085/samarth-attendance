@@ -9,6 +9,7 @@ export interface Submission {
   id: string;
   name: string;
   sapId?: string | null;
+  school?: string | null;
   course?: string | null;
   specialization?: string | null;
   batch?: string | null;

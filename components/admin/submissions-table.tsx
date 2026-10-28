@@ -67,6 +67,12 @@ function Details({ r }: { r: Submission }) {
         <dd>
           {r.targetLatitude.toFixed(6)}, {r.targetLongitude.toFixed(6)} · {r.radiusM} m
         </dd>
+        {r.school && (
+          <>
+            <dt className="text-muted">School</dt>
+            <dd className="font-semibold text-slate-900 dark:text-white">{r.school}</dd>
+          </>
+        )}
         {r.eventRating && (
           <>
             <dt className="text-muted">Q1 Quality</dt>
@@ -126,6 +132,7 @@ export function SubmissionsTable({ rows }: { rows: Submission[] }) {
             <tr>
               <th className="px-3 py-3 font-medium">Student Name</th>
               <th className="px-3 py-3 font-medium">SAP ID</th>
+              <th className="px-3 py-3 font-medium">School</th>
               <th className="px-3 py-3 font-medium">Course</th>
               <th className="px-3 py-3 font-medium">Specialization</th>
               <th className="px-3 py-3 font-medium">Batch</th>
@@ -142,6 +149,7 @@ export function SubmissionsTable({ rows }: { rows: Submission[] }) {
               <tr key={r.id} className="align-top">
                 <td className="px-3 py-3 font-medium">{r.name}</td>
                 <td className="px-3 py-3 font-mono text-xs">{r.sapId ?? r.memberId ?? <Dash />}</td>
+                <td className="px-3 py-3 text-xs">{r.school ?? <Dash />}</td>
                 <td className="px-3 py-3">{r.course ?? r.department ?? <Dash />}</td>
                 <td className="px-3 py-3">{r.specialization ?? r.designation ?? <Dash />}</td>
                 <td className="px-3 py-3">{r.batch ?? r.institution ?? <Dash />}</td>

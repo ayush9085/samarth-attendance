@@ -17,7 +17,7 @@ import { randomUUID } from "node:crypto";
 import postgres from "postgres";
 import { connectionOptions, isLocalDatabase } from "../lib/db-options";
 import { assertValidCoordinates, destinationPoint, evaluateGeofence, type GeofenceConfig } from "../lib/geo";
-import { employeeSchema } from "../lib/validation";
+import { employeeSchema, UPES_SCHOOLS } from "../lib/validation";
 import { loadEnv } from "./load-env";
 
 loadEnv();
@@ -97,9 +97,13 @@ async function main() {
       const details = employeeSchema.parse({
         name: `${first} ${last}`,
         sapId: `5000${String(1000 + i)}`,
+        school: pick(UPES_SCHOOLS),
         course: pick(COURSES),
         specialization: pick(SPECIALIZATIONS),
         batch: pick(BATCHES),
+        eventRating: Math.floor(rand() * 5) + 1,
+        contentRelevance: Math.floor(rand() * 5) + 1,
+        suggestions: "Good session",
       });
 
       // Mostly well inside; a few near the 100 m edge; ~15% with poor (but acceptable) accuracy

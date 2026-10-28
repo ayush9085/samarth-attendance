@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { AttendanceClosed } from "@/components/attendance/attendance-closed";
 import { AttendanceFlow } from "@/components/attendance/attendance-flow";
-import { getGeofenceConfig } from "@/lib/config";
-import { isAttendanceOpenOrDefault } from "@/lib/db";
+import { getActiveGeofenceConfig, isAttendanceOpenOrDefault } from "@/lib/db";
 
 export const metadata: Metadata = {
   title: "SAMARTH INTERNSHIP 3.0 Ice Breaking Session Attendance Form",
@@ -17,7 +16,7 @@ export const dynamic = "force-dynamic";
  * the workplace coordinates and every geofence decision stay on the server.
  */
 export default async function AttendancePage() {
-  const { radiusMeters } = getGeofenceConfig();
+  const geofence = await getActiveGeofenceConfig();
   // Admin switch (checked on every request). If the setting can't be read (e.g. a brief DB
   // outage), show the normal flow rather than an error page — the API enforces the switch.
   const open = await isAttendanceOpenOrDefault("attendance");
@@ -64,13 +63,15 @@ export default async function AttendancePage() {
 
         {open ? (
           <>
-            <AttendanceFlow radiusMeters={radiusMeters} />
+            <AttendanceFlow radiusMeters={geofence.radiusMeters} geofenceEnabled={geofence.enabled} />
             <footer className="mt-8 text-center text-xs text-slate-500 dark:text-slate-400 space-y-1 pb-4">
               <p className="font-medium text-slate-600 dark:text-slate-400">
-                UPES × SAMARTH Internship 3.0 · Campus Geofenced Attendance
+                UPES × SAMARTH Internship 3.0 · Campus Attendance
               </p>
               <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                Checked strictly within {radiusMeters} m of the event hall. No background tracking occurs.
+                {geofence.enabled
+                  ? `Checked strictly within ${geofence.radiusMeters} m of the event hall. No background tracking occurs.`
+                  : "Direct check-in mode active. No GPS verification required."}
               </p>
             </footer>
           </>

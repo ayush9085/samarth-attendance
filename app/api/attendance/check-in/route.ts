@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { checkIn } from "@/lib/attendance-service";
-import { getGeofenceConfig, getLowAccuracyThreshold, getMaxAccuracy, getSessionSecret } from "@/lib/config";
-import { insertSubmission } from "@/lib/db";
+import { getLowAccuracyThreshold, getMaxAccuracy, getSessionSecret } from "@/lib/config";
+import { getActiveGeofenceConfig, insertSubmission } from "@/lib/db";
 import { json, readJsonBody, tooManyRequests } from "@/lib/http";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { clientIp, hashIp } from "@/lib/request";
@@ -23,11 +23,13 @@ export async function POST(request: NextRequest) {
   if (!parsed.ok) return parsed.response;
 
   try {
+    const dynamicGeo = await getActiveGeofenceConfig();
     const r = await checkIn(
       parsed.body,
       { userAgent: request.headers.get("user-agent"), ipHash },
       {
-        geofence: getGeofenceConfig(),
+        geofence: { target: dynamicGeo.target, radiusMeters: dynamicGeo.radiusMeters },
+        geofenceEnabled: dynamicGeo.enabled,
         maxAccuracy: getMaxAccuracy(),
         lowAccuracyThreshold: getLowAccuracyThreshold(),
         secret: getSessionSecret(),

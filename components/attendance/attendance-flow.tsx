@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { AttendanceClosed } from "@/components/attendance/attendance-closed";
 import { Spinner } from "@/components/ui/spinner";
 import { formatDistance } from "@/lib/geo";
-import { employeeSchema, fieldErrors as toFieldErrors, validateEmployeeField, type EmployeeField } from "@/lib/validation";
+import { employeeSchema, fieldErrors as toFieldErrors, validateEmployeeField, type EmployeeField, UPES_SCHOOLS } from "@/lib/validation";
 import type { CheckInResponse, VerifyResponse } from "@/types/submission";
 
 type Phase =
@@ -19,13 +19,14 @@ type Phase =
       radius: number;
       accuracy: number;
       lowAccuracy: boolean;
-      token: string;
-      expiresAt: string;
+      token?: string;
+      expiresAt?: string;
     }
   | {
       k: "done";
       name: string;
       sapId: string;
+      school?: string;
       course: string;
       specialization: string;
       batch: string;
@@ -49,6 +50,7 @@ const RATING_OPTIONS = [
 const EMPTY_FORM: Record<EmployeeField, string> = {
   name: "",
   sapId: "",
+  school: "",
   course: "",
   specialization: "",
   batch: "",
@@ -83,8 +85,25 @@ function timeLabel(iso: string) {
   });
 }
 
-export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
-  const [phase, setPhase] = useState<Phase>({ k: "idle" });
+export function AttendanceFlow({
+  radiusMeters,
+  geofenceEnabled = true,
+}: {
+  radiusMeters: number;
+  geofenceEnabled?: boolean;
+}) {
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (geofenceEnabled === false) {
+      return {
+        k: "verified",
+        distance: 0,
+        radius: radiusMeters,
+        accuracy: 0,
+        lowAccuracy: false,
+      };
+    }
+    return { k: "idle" };
+  });
   const [form, setForm] = useState<Record<EmployeeField, string>>(EMPTY_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -267,6 +286,7 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
         k: "done",
         name: data.checkIn.name,
         sapId: form.sapId,
+        school: form.school,
         course: form.course,
         specialization: form.specialization,
         batch: form.batch,
@@ -282,7 +302,7 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
     }
   }
 
-  const set = (field: EmployeeField) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const set = (field: EmployeeField) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const val = e.target.value;
     setForm((f) => ({ ...f, [field]: val }));
     if (touched.has(field)) {
@@ -340,6 +360,12 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
               <span className="text-slate-500 font-medium">SAP ID</span>
               <span className="font-mono font-semibold text-slate-900 dark:text-white">{phase.sapId}</span>
             </div>
+            {phase.school && (
+              <div className="flex justify-between px-3.5 py-2.5">
+                <span className="text-slate-500 font-medium">UPES School</span>
+                <span className="font-semibold text-slate-900 dark:text-white">{phase.school}</span>
+              </div>
+            )}
             <div className="flex justify-between px-3.5 py-2.5">
               <span className="text-slate-500 font-medium">Course & Specialization</span>
               <span className="font-semibold text-slate-900 dark:text-white">
@@ -515,15 +541,17 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
                 ✓
               </span>
               <span className="font-semibold text-emerald-900 dark:text-emerald-300">
-                Venue Geofence Verified
+                {phase.token ? "Venue Geofence Verified" : "Direct Check-In Active"}
               </span>
               <span className="text-slate-500 dark:text-slate-400">
-                · {formatDistance(phase.distance)} from center
+                {phase.token ? `· ${formatDistance(phase.distance)} from center` : "· No GPS required"}
               </span>
             </div>
-            <span className="text-[11px] text-slate-400">
-              Valid until {new Date(phase.expiresAt).toLocaleTimeString("en-IN", { timeStyle: "short", timeZone: "Asia/Kolkata" })}
-            </span>
+            {phase.expiresAt && (
+              <span className="text-[11px] text-slate-400">
+                Valid until {new Date(phase.expiresAt).toLocaleTimeString("en-IN", { timeStyle: "short", timeZone: "Asia/Kolkata" })}
+              </span>
+            )}
           </div>
 
           {/* Form Card */}
@@ -580,6 +608,33 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
                     aria-invalid={!!errors.sapId}
                     aria-describedby={errors.sapId ? "sapId-error" : undefined}
                   />
+                </Field>
+
+                {/* School */}
+                <Field
+                  id="school"
+                  label="UPES School"
+                  required
+                  error={errors.school}
+                >
+                  <select
+                    id="school"
+                    className="input bg-white dark:bg-slate-900 cursor-pointer"
+                    required
+                    value={form.school}
+                    onChange={set("school")}
+                    onBlur={blur("school")}
+                    aria-required
+                    aria-invalid={!!errors.school}
+                    aria-describedby={errors.school ? "school-error" : undefined}
+                  >
+                    <option value="">Select your UPES School…</option>
+                    {UPES_SCHOOLS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
 
                 {/* Course & Specialization Row */}

@@ -86,6 +86,18 @@ const rating = (label: string) =>
     return val;
   }, z.number({ error: `${label} is required.` }).int().min(1, `${label} is required.`).max(5, `${label} must be between 1 and 5.`));
 
+export const UPES_SCHOOLS = [
+  "School of Advanced Engineering",
+  "School of Computer Science",
+  "School of Business",
+  "School of Design",
+  "School of Law",
+  "School of Health Sciences & Technology",
+  "School of Liberal Studies & Humanities",
+] as const;
+
+export type UpesSchool = (typeof UPES_SCHOOLS)[number];
+
 /** Step 2 — student details, shown only after the server verified the location. All fields are required. */
 export const studentSchema = z.object({
   name: text("Student Name", 2, 100).refine(
@@ -96,6 +108,14 @@ export const studentSchema = z.object({
     (s) => /^[a-zA-Z0-9_\-\s/]+$/.test(s),
     "SAP ID may only contain numbers, letters, spaces, hyphens, and slashes.",
   ),
+  school: z
+    .string({ error: "Please select your UPES School." })
+    .transform((s) => s.normalize("NFKC").trim())
+    .refine((s) => s.length > 0, "Please select your UPES School.")
+    .refine(
+      (s) => (UPES_SCHOOLS as readonly string[]).includes(s),
+      "Please select a valid UPES School from the list.",
+    ),
   course: orgText("Course", 100),
   specialization: orgText("Specialization", 100),
   batch: text("Batch", 2, 50).refine(
@@ -127,9 +147,9 @@ export type EmployeeInput = StudentInput;
 export type EmployeeField = StudentField;
 export const validateEmployeeField = validateStudentField;
 
-/** Check In request: employee details + the signed location verification from step 1. */
+/** Check In request: employee details + the optional signed location verification from step 1. */
 export const checkInSchema = employeeSchema.extend({
-  verificationToken: z.string({ error: "Location verification is required." }).min(1).max(4096),
+  verificationToken: z.string().max(4096).optional(),
 });
 
 /** Flatten Zod issues into { field: message } for the UI. */

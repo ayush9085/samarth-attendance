@@ -23,6 +23,7 @@ import type { NewSubmission, Submission } from "@/types/submission";
 
 export interface AttendanceConfig {
   geofence: GeofenceConfig;
+  geofenceEnabled?: boolean;
   /** Reject fixes whose accuracy radius is worse than this (meters). */
   maxAccuracy: number;
   /** Flag (but accept) fixes whose accuracy radius is worse than this (meters). */
@@ -183,7 +184,7 @@ export async function checkIn(body: unknown, meta: RequestMeta, deps: CheckInDep
   const parsed = checkInSchema.safeParse(body);
   if (!parsed.success) {
     const errors = fieldErrors(parsed.error);
-    if (errors.verificationToken) {
+    if (errors.verificationToken && deps.geofenceEnabled !== false) {
       return {
         ok: false,
         status: 401,
@@ -196,42 +197,77 @@ export async function checkIn(body: unknown, meta: RequestMeta, deps: CheckInDep
   const input = parsed.data;
   const nowS = Math.floor((deps.now?.() ?? Date.now()) / 1000);
 
-  const claims = await verifyToken(input.verificationToken, tokenSecret(deps.secret));
-  if (!isLocationClaims(claims) || claims.exp <= nowS) {
-    return {
-      ok: false,
-      status: 401,
-      code: "VERIFICATION_REQUIRED",
-      error: "Your location verification has expired or is invalid. Please verify your location again.",
-    };
-  }
+  let location: LocationInput;
+  let distanceMeters: number;
+  let status = "WITHIN_RANGE" as const;
+  let verificationId: string;
+  let verificationExpiresAt: Date;
+  let isLowAccuracy = false;
 
-  if (claims.acc > deps.maxAccuracy) {
-    return {
-      ok: false,
-      status: 422,
-      code: "VERIFICATION_REQUIRED",
-      error: "Your location is too imprecise to verify. Please verify your location again.",
+  // If admin has turned OFF geofencing verification, allow check-in without GPS token
+  if (deps.geofenceEnabled === false && !input.verificationToken) {
+    location = {
+      latitude: deps.geofence.target.latitude,
+      longitude: deps.geofence.target.longitude,
+      accuracy: 0,
+      positionTimestamp: Date.now(),
     };
-  }
+    distanceMeters = 0;
+    verificationId = crypto.randomUUID();
+    verificationExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  } else {
+    if (!input.verificationToken) {
+      return {
+        ok: false,
+        status: 401,
+        code: "VERIFICATION_REQUIRED",
+        error: "Please verify your location before checking in.",
+      };
+    }
 
-  // Authoritative re-check: recompute from the signed coordinates against the CURRENT geofence.
-  const location: LocationInput = { latitude: claims.lat, longitude: claims.lon, accuracy: claims.acc, positionTimestamp: claims.ts };
-  const { distanceMeters, status } = evaluateGeofence(location, deps.geofence);
-  if (status !== "WITHIN_RANGE") {
-    return {
-      ok: false,
-      status: 403,
-      code: "OUTSIDE_RANGE",
-      error: `Attendance unavailable: you are outside the authorized workplace area (${distanceMeters} m away; ${deps.geofence.radiusMeters} m or less is required).`,
-      distanceMeters,
-    };
+    const claims = await verifyToken(input.verificationToken, tokenSecret(deps.secret));
+    if (!isLocationClaims(claims) || claims.exp <= nowS) {
+      return {
+        ok: false,
+        status: 401,
+        code: "VERIFICATION_REQUIRED",
+        error: "Your location verification has expired or is invalid. Please verify your location again.",
+      };
+    }
+
+    if (claims.acc > deps.maxAccuracy) {
+      return {
+        ok: false,
+        status: 422,
+        code: "VERIFICATION_REQUIRED",
+        error: "Your location is too imprecise to verify. Please verify your location again.",
+      };
+    }
+
+    // Authoritative re-check: recompute from the signed coordinates against the CURRENT geofence.
+    location = { latitude: claims.lat, longitude: claims.lon, accuracy: claims.acc, positionTimestamp: claims.ts };
+    const evaluated = evaluateGeofence(location, deps.geofence);
+    if (evaluated.status !== "WITHIN_RANGE") {
+      return {
+        ok: false,
+        status: 403,
+        code: "OUTSIDE_RANGE",
+        error: `Attendance unavailable: you are outside the authorized workplace area (${evaluated.distanceMeters} m away; ${deps.geofence.radiusMeters} m or less is required).`,
+        distanceMeters: evaluated.distanceMeters,
+      };
+    }
+    distanceMeters = evaluated.distanceMeters;
+    status = evaluated.status;
+    verificationId = claims.jti;
+    verificationExpiresAt = new Date(claims.exp * 1000);
+    isLowAccuracy = location.accuracy > deps.lowAccuracyThreshold;
   }
 
   try {
     const submission = await deps.insert({
       name: input.name,
       sapId: input.sapId,
+      school: input.school,
       course: input.course,
       specialization: input.specialization,
       batch: input.batch,
@@ -244,13 +280,13 @@ export async function checkIn(body: unknown, meta: RequestMeta, deps: CheckInDep
       positionCapturedAt: new Date(location.positionTimestamp),
       distanceM: distanceMeters,
       geofenceStatus: status,
-      lowAccuracy: location.accuracy > deps.lowAccuracyThreshold,
+      lowAccuracy: isLowAccuracy,
       targetLatitude: deps.geofence.target.latitude,
       targetLongitude: deps.geofence.target.longitude,
       radiusM: deps.geofence.radiusMeters,
       clientDistanceM: null,
-      verificationId: claims.jti,
-      verificationExpiresAt: new Date(claims.exp * 1000),
+      verificationId,
+      verificationExpiresAt,
       userAgent: meta.userAgent?.slice(0, 500) ?? null,
       ipHash: meta.ipHash,
     });

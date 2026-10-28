@@ -62,6 +62,7 @@ ALTER TABLE submissions ADD COLUMN IF NOT EXISTS institution     text CHECK (cha
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS email           text CHECK (char_length(email) BETWEEN 3 AND 254 AND email LIKE '%_@_%');
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS mobile          text CHECK (mobile ~ '^\+[1-9][0-9]{7,14}$');
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS sap_id          text CHECK (char_length(sap_id) BETWEEN 1 AND 50);
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS school          text CHECK (char_length(school) BETWEEN 1 AND 120);
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS course          text CHECK (char_length(course) BETWEEN 1 AND 100);
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS specialization  text CHECK (char_length(specialization) BETWEEN 1 AND 100);
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS batch           text CHECK (char_length(batch) BETWEEN 1 AND 50);
@@ -92,6 +93,7 @@ $$;
 CREATE INDEX IF NOT EXISTS submissions_institution_idx    ON submissions (institution);
 CREATE INDEX IF NOT EXISTS submissions_email_idx          ON submissions (email);
 CREATE INDEX IF NOT EXISTS submissions_sap_id_idx         ON submissions (sap_id);
+CREATE INDEX IF NOT EXISTS submissions_school_idx         ON submissions (school);
 CREATE INDEX IF NOT EXISTS submissions_course_idx         ON submissions (course);
 CREATE INDEX IF NOT EXISTS submissions_batch_idx          ON submissions (batch);
 

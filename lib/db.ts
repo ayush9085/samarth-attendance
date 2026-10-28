@@ -1,6 +1,6 @@
 import "server-only";
 import postgres from "postgres";
-import { getDatabaseUrl, getDisplayTimezone } from "./config";
+import { getDatabaseUrl, getDisplayTimezone, getGeofenceConfig } from "./config";
 import { attendanceClosedError } from "./attendance-closed";
 import { hasErrorCode, PG } from "./pg-errors";
 import { connectionOptions } from "./db-options";
@@ -30,7 +30,7 @@ export function db(): postgres.Sql {
 const MAX_PAGE_SIZE = 200;
 
 const COLUMNS = (sql: postgres.Sql | postgres.TransactionSql) => sql`
-  id, name, sap_id, course, specialization, batch, event_rating, content_relevance, suggestions,
+  id, name, sap_id, school, course, specialization, batch, event_rating, content_relevance, suggestions,
   designation, institution, email, mobile, department, member_id,
   latitude, longitude, accuracy_m, position_captured_at, distance_m, geofence_status, low_accuracy,
   target_latitude, target_longitude, radius_m, client_distance_m, verification_id, user_agent, created_at`;
@@ -68,14 +68,14 @@ export async function insertSubmission(s: NewSubmission): Promise<Submission> {
 async function insertSubmissionRow(sql: postgres.TransactionSql, s: NewSubmission): Promise<Submission> {
   const [row] = await sql<Submission[]>`
     INSERT INTO submissions (
-      name, sap_id, course, specialization, batch,
+      name, sap_id, school, course, specialization, batch,
       event_rating, content_relevance, suggestions,
       designation, institution, email, mobile,
       latitude, longitude, accuracy_m, position_captured_at,
       distance_m, geofence_status, low_accuracy, target_latitude, target_longitude, radius_m,
       client_distance_m, verification_id, user_agent, ip_hash
     ) VALUES (
-      ${s.name}, ${s.sapId ?? null}, ${s.course ?? null}, ${s.specialization ?? null}, ${s.batch ?? null},
+      ${s.name}, ${s.sapId ?? null}, ${s.school ?? null}, ${s.course ?? null}, ${s.specialization ?? null}, ${s.batch ?? null},
       ${s.eventRating ?? null}, ${s.contentRelevance ?? null}, ${s.suggestions || null},
       ${s.designation ?? null}, ${s.institution ?? null}, ${s.email ?? null}, ${s.mobile ?? null},
       ${s.latitude}, ${s.longitude}, ${s.accuracyM}, ${s.positionCapturedAt},
@@ -92,7 +92,7 @@ function whereClause(sql: postgres.Sql, f: SubmissionFilters) {
   if (f.q) {
     const like = `%${f.q.replace(/[\\%_]/g, (m) => "\\" + m)}%`;
     conditions.push(sql`(
-      name ILIKE ${like} OR sap_id ILIKE ${like} OR course ILIKE ${like}
+      name ILIKE ${like} OR sap_id ILIKE ${like} OR school ILIKE ${like} OR course ILIKE ${like}
       OR specialization ILIKE ${like} OR batch ILIKE ${like}
       OR designation ILIKE ${like} OR institution ILIKE ${like}
       OR email ILIKE ${like} OR mobile ILIKE ${like}
@@ -296,4 +296,101 @@ export async function setAttendanceOpen(open: boolean, actor: string): Promise<b
       VALUES (${actor}, ${open ? "attendance_opened" : "attendance_closed"}, ${sql.json({ open })})`;
     return true;
   }) as Promise<boolean>;
+}
+
+export interface DynamicGeofenceSettings {
+  enabled: boolean;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+}
+
+export interface ActiveGeofenceConfig {
+  enabled: boolean;
+  target: { latitude: number; longitude: number };
+  radiusMeters: number;
+  updatedAt: Date | null;
+  updatedBy: string | null;
+}
+
+/**
+ * Reads dynamic geofence settings from app_settings (admin-customized).
+ * Falls back to environment variables if unconfigured or during DB initialization.
+ */
+export async function getActiveGeofenceConfig(): Promise<ActiveGeofenceConfig> {
+  const fallback = getGeofenceConfig();
+  try {
+    const [row] = await db()<{ value: unknown; updatedAt: Date; updatedBy: string }[]>`
+      SELECT value, updated_at, updated_by FROM app_settings WHERE key = 'geofence_settings'`;
+    if (!row || typeof row.value !== "object" || row.value === null) {
+      return {
+        enabled: true,
+        target: fallback.target,
+        radiusMeters: fallback.radiusMeters,
+        updatedAt: null,
+        updatedBy: null,
+      };
+    }
+    const val = row.value as Record<string, unknown>;
+    const enabled = typeof val.enabled === "boolean" ? val.enabled : true;
+    const lat = typeof val.latitude === "number" && Number.isFinite(val.latitude) ? val.latitude : fallback.target.latitude;
+    const lon = typeof val.longitude === "number" && Number.isFinite(val.longitude) ? val.longitude : fallback.target.longitude;
+    const rad = typeof val.radiusMeters === "number" && val.radiusMeters > 0 ? val.radiusMeters : fallback.radiusMeters;
+    return {
+      enabled,
+      target: { latitude: lat, longitude: lon },
+      radiusMeters: rad,
+      updatedAt: row.updatedAt,
+      updatedBy: row.updatedBy,
+    };
+  } catch (err) {
+    if (isUndefinedTable(err)) {
+      return {
+        enabled: true,
+        target: fallback.target,
+        radiusMeters: fallback.radiusMeters,
+        updatedAt: null,
+        updatedBy: null,
+      };
+    }
+    console.error("[settings] could not read geofence settings; using env fallback", err);
+    return {
+      enabled: true,
+      target: fallback.target,
+      radiusMeters: fallback.radiusMeters,
+      updatedAt: null,
+      updatedBy: null,
+    };
+  }
+}
+
+/**
+ * Update dynamic geofence settings with audit logging.
+ */
+export async function setActiveGeofenceConfig(
+  settings: DynamicGeofenceSettings,
+  actor: string,
+): Promise<ActiveGeofenceConfig> {
+  const jsonVal = {
+    enabled: Boolean(settings.enabled),
+    latitude: Number(settings.latitude),
+    longitude: Number(settings.longitude),
+    radiusMeters: Number(settings.radiusMeters),
+  };
+  return db().begin(async (sql) => {
+    await sql`
+      INSERT INTO app_settings (key, value, updated_at, updated_by)
+      VALUES ('geofence_settings', ${sql.json(jsonVal)}, now(), ${actor})
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`;
+    await sql`
+      INSERT INTO admin_audit_log (actor, action, details)
+      VALUES (${actor}, 'geofence_settings_updated', ${sql.json(jsonVal)})`;
+    return {
+      enabled: jsonVal.enabled,
+      target: { latitude: jsonVal.latitude, longitude: jsonVal.longitude },
+      radiusMeters: jsonVal.radiusMeters,
+      updatedAt: new Date(),
+      updatedBy: actor,
+    };
+  });
 }

@@ -8,6 +8,7 @@ const COLUMNS = [
   ["createdAt", "Check-In Time (UTC)"],
   ["name", "Student Name"],
   ["sapId", "SAP ID"],
+  ["school", "UPES School"],
   ["course", "Course"],
   ["specialization", "Specialization"],
   ["batch", "Batch"],

@@ -36,6 +36,7 @@ function fixAt(distance: number, bearing = 30, accuracy = 10) {
 const EMPLOYEE = {
   name: "Anita Menon",
   sapId: "500123456",
+  school: "School of Computer Science",
   course: "B.Tech",
   specialization: "Computer Science",
   batch: "2022-2026",
@@ -139,11 +140,22 @@ describe("checkIn — authoritative server-side re-check and storage", () => {
     expect(saved.verificationExpiresAt?.getTime()).toBe((Math.floor(NOW / 1000) + VERIFICATION_TTL_S) * 1000);
   });
 
-  it("7. direct submission without a location verification is refused", async () => {
-    const { d, insert } = deps();
+  it("7. direct submission without a location verification is refused when geofence is enabled", async () => {
+    const { d, insert } = deps({ geofenceEnabled: true });
     const r = await checkIn({ ...EMPLOYEE }, META, d);
     expect(r).toMatchObject({ ok: false, status: 401, code: "VERIFICATION_REQUIRED" });
     expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("7b. direct submission without location verification succeeds when geofence is disabled by admin", async () => {
+    const { d, insert } = deps({ geofenceEnabled: false });
+    const r = await checkIn({ ...EMPLOYEE }, META, d);
+    expect(r.ok).toBe(true);
+    expect(insert).toHaveBeenCalled();
+    const saved = insert.mock.calls[0][0];
+    expect(saved.distanceM).toBe(0);
+    expect(saved.geofenceStatus).toBe("WITHIN_RANGE");
+    expect(saved.school).toBe("School of Computer Science");
   });
 
   it("8. ignores client-supplied distance/status and forged coordinates", async () => {

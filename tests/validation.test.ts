@@ -27,6 +27,7 @@ describe("studentSchema / employeeSchema", () => {
   const VALID = {
     name: "Anita Menon",
     sapId: "500123456",
+    school: "School of Computer Science",
     course: "B.Tech",
     specialization: "Computer Science",
     batch: "2022-2026",
@@ -44,9 +45,10 @@ describe("studentSchema / employeeSchema", () => {
   });
 
   it("requires every field: empty → '<Field> is required.'", () => {
-    expect(errorsFor({ name: "", sapId: "", course: "", specialization: "", batch: "", eventRating: "", contentRelevance: "" })).toEqual({
+    expect(errorsFor({ name: "", sapId: "", school: "", course: "", specialization: "", batch: "", eventRating: "", contentRelevance: "" })).toEqual({
       name: "Student Name is required.",
       sapId: "SAP ID is required.",
+      school: "Please select your UPES School.",
       course: "Course is required.",
       specialization: "Specialization is required.",
       batch: "Batch is required.",
@@ -66,6 +68,13 @@ describe("studentSchema / employeeSchema", () => {
       }
     },
   );
+
+  it("validates UPES School selection", () => {
+    expect(errorsFor({ ...VALID, school: "" }).school).toBe("Please select your UPES School.");
+    expect(errorsFor({ ...VALID, school: "Hogwarts School" }).school).toBe("Please select a valid UPES School from the list.");
+    expect(errorsFor({ ...VALID, school: "School of Advanced Engineering" }).school).toBeUndefined();
+    expect(errorsFor({ ...VALID, school: "School of Business" }).school).toBeUndefined();
+  });
 
   it("too short → 'at least 2 characters'", () => {
     expect(errorsFor({ ...VALID, name: "A" }).name).toBe("Student Name must be at least 2 characters.");
@@ -103,6 +112,7 @@ describe("studentSchema / employeeSchema", () => {
     const r = employeeSchema.parse({
       name: "  K.  Ramesh ",
       sapId: " 50098765 ",
+      school: " School of Computer Science ",
       course: " B.Tech ",
       specialization: " Artificial Intelligence ",
       batch: " 2022-2026 ",
@@ -113,6 +123,7 @@ describe("studentSchema / employeeSchema", () => {
     expect(r).toEqual({
       name: "K. Ramesh",
       sapId: "50098765",
+      school: "School of Computer Science",
       course: "B.Tech",
       specialization: "Artificial Intelligence",
       batch: "2022-2026",
