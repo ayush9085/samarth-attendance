@@ -10,13 +10,11 @@ export default async function LoginPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-12">
-      <div className="mb-6 flex items-center justify-center gap-3">
-        <div className="flex h-12 items-center justify-center rounded-xl bg-white px-3 py-1 shadow-2xs border border-border">
+      <div className="mb-6 flex items-center justify-center">
+        <div className="flex items-center justify-center gap-3.5 rounded-xl bg-white px-4 py-2 shadow-2xs border border-border">
           <img src="/upes-logo.png" alt="UPES" className="h-8 w-auto object-contain" />
-        </div>
-        <div className="h-6 w-px bg-border" />
-        <div className="flex h-12 items-center justify-center rounded-xl bg-white px-3 py-1 shadow-2xs border border-border">
-          <img src="/samarth-logo.png" alt="SAMARTH" className="h-7 w-auto object-contain" />
+          <div className="h-6 w-px bg-slate-200" />
+          <img src="/samarth-logo.png" alt="SAMARTH" className="h-8 w-auto object-contain" />
         </div>
       </div>
       <div className="text-center mb-6">

@@ -27,14 +27,24 @@ export default async function AttendancePage() {
       <main className="mx-auto w-full max-w-xl flex-1 flex flex-col">
         {/* Institutional Header */}
         <header className="mb-5 text-center">
-          {/* Dual Logos Container - Prominent & Mobile-Friendly */}
-          <div className="inline-flex items-center justify-center gap-5 sm:gap-7 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 sm:px-8 py-3.5 sm:py-4 shadow-xs mb-3.5">
-            <div className="flex h-12 sm:h-14 items-center justify-center">
-              <img src="/upes-logo.png" alt="UPES Logo" className="h-11 sm:h-13 w-auto object-contain" />
+          {/* Dual Logos Container - Prominent & Mobile-Optimized */}
+          <div className="inline-flex items-center justify-center gap-3.5 sm:gap-7 rounded-2xl border border-slate-200/90 bg-white px-4 sm:px-7 py-3 sm:py-4 shadow-xs mb-3.5 max-w-full">
+            <div className="flex items-center justify-center">
+              <img
+                src="/upes-logo.png"
+                alt="UPES - University of Petroleum and Energy Studies"
+                className="h-9 xs:h-10 sm:h-12 w-auto max-w-[130px] sm:max-w-[175px] object-contain"
+                loading="eager"
+              />
             </div>
-            <div className="h-8 sm:h-10 w-px bg-slate-200 dark:bg-slate-700" />
-            <div className="flex h-12 sm:h-14 items-center justify-center">
-              <img src="/samarth-logo.png" alt="SAMARTH Logo" className="h-11 sm:h-13 w-auto object-contain" />
+            <div className="h-8 sm:h-10 w-px bg-slate-200 shrink-0" />
+            <div className="flex items-center justify-center">
+              <img
+                src="/samarth-logo.png"
+                alt="SAMARTH Internship 3.0"
+                className="h-9 xs:h-10 sm:h-12 w-auto max-w-[135px] sm:max-w-[180px] object-contain"
+                loading="eager"
+              />
             </div>
           </div>
 

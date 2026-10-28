@@ -45,7 +45,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
           <div className="flex items-center gap-2.5 rounded-xl border border-border bg-white px-2.5 py-1.5 shadow-2xs">
             <img src="/upes-logo.png" alt="UPES" className="h-7 w-auto object-contain" />
             <div className="h-5 w-px bg-slate-200" />
-            <img src="/samarth-logo.png" alt="SAMARTH" className="h-6 w-auto object-contain" />
+            <img src="/samarth-logo.png" alt="SAMARTH" className="h-7 w-auto object-contain" />
           </div>
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-400">
