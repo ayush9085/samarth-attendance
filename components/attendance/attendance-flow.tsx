@@ -630,7 +630,7 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
                 {/* Batch */}
                 <Field
                   id="batch"
-                  label="Batch / Year"
+                  label="Batch"
                   required
                   error={errors.batch}
                 >
@@ -638,7 +638,7 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
                     id="batch"
                     className="input"
                     maxLength={50}
-                    placeholder="e.g. 2023-2027 or Batch A"
+                    placeholder="e.g. B1, B2"
                     required
                     value={form.batch}
                     onChange={set("batch")}
