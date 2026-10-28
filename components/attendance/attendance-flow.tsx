@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { AttendanceClosed } from "@/components/attendance/attendance-closed";
 import { Spinner } from "@/components/ui/spinner";
 import { formatDistance } from "@/lib/geo";
@@ -121,51 +121,6 @@ export function AttendanceFlow({
       detecting.current = false;
     }
   }
-
-  async function simulateVenueLocation() {
-    setFormError(null);
-    setPhase({ k: "verifying" });
-    try {
-      const res = await fetch("/api/attendance/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          latitude: 30.417006,
-          longitude: 77.966656,
-          accuracy: 10,
-          positionTimestamp: Date.now(),
-        }),
-      });
-      const data = (await res.json().catch(() => null)) as VerifyResponse | null;
-      if (!data || !data.ok) {
-        setPhase({ k: "error", message: data?.error || "Unable to verify location." });
-        return;
-      }
-      if (data.status === "WITHIN_RANGE" && data.verificationToken && data.expiresAt) {
-        setPhase({
-          k: "verified",
-          distance: data.distanceMeters,
-          radius: data.radiusMeters,
-          accuracy: data.accuracyMeters,
-          lowAccuracy: data.lowAccuracy,
-          token: data.verificationToken,
-          expiresAt: data.expiresAt,
-        });
-      }
-    } catch {
-      setPhase({ k: "error", message: "Error verifying test location." });
-    }
-  }
-
-  // Auto-bypass if ?bypass=1 or ?test=1 in URL
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("bypass") === "1" || params.get("test") === "1" || params.get("dev") === "1") {
-        simulateVenueLocation();
-      }
-    }
-  }, []);
 
   async function runLocationCheck() {
     setFormError(null);
@@ -457,14 +412,6 @@ export function AttendanceFlow({
                 >
                   {phase.k === "error" ? "Retry Location Check" : "Verify Location & Proceed"}
                 </button>
-
-                <button
-                  type="button"
-                  onClick={simulateVenueLocation}
-                  className="w-full py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-                >
-                  Test Mode: Skip Geofence Check
-                </button>
               </div>
             </div>
           )}
@@ -517,13 +464,6 @@ export function AttendanceFlow({
               <div className="space-y-2 pt-2">
                 <button type="button" onClick={detectLocation} className="btn-secondary w-full py-2.5 text-xs font-semibold">
                   Retry Location Check
-                </button>
-                <button
-                  type="button"
-                  onClick={simulateVenueLocation}
-                  className="w-full py-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
-                >
-                  Test Mode: Skip Geofence Check
                 </button>
               </div>
             </div>
