@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { AttendanceClosed } from "@/components/attendance/attendance-closed";
 import { Spinner } from "@/components/ui/spinner";
 import { formatDistance } from "@/lib/geo";
@@ -96,6 +96,51 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
       detecting.current = false;
     }
   }
+
+  async function simulateVenueLocation() {
+    setFormError(null);
+    setPhase({ k: "verifying" });
+    try {
+      const res = await fetch("/api/attendance/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          latitude: 30.417006,
+          longitude: 77.966656,
+          accuracy: 10,
+          positionTimestamp: Date.now(),
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as VerifyResponse | null;
+      if (!data || !data.ok) {
+        setPhase({ k: "error", message: data?.error || "Unable to verify test location." });
+        return;
+      }
+      if (data.status === "WITHIN_RANGE" && data.verificationToken && data.expiresAt) {
+        setPhase({
+          k: "verified",
+          distance: data.distanceMeters,
+          radius: data.radiusMeters,
+          accuracy: data.accuracyMeters,
+          lowAccuracy: data.lowAccuracy,
+          token: data.verificationToken,
+          expiresAt: data.expiresAt,
+        });
+      }
+    } catch {
+      setPhase({ k: "error", message: "Error simulating venue location." });
+    }
+  }
+
+  // Auto-unlock form if ?bypass=1 or ?test=1 in URL or ?dev=1
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("bypass") === "1" || params.get("test") === "1" || params.get("dev") === "1") {
+        simulateVenueLocation();
+      }
+    }
+  }, []);
 
   async function runLocationCheck() {
     setFormError(null);
@@ -419,6 +464,15 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
               >
                 <PinIcon /> {phase.k === "error" ? "Retry Location Check" : "Detect My Location & Unlock Form"}
               </button>
+
+              <button
+                type="button"
+                onClick={simulateVenueLocation}
+                className="w-full py-2.5 px-3 rounded-xl border border-dashed border-sky-400/80 bg-sky-50/70 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 font-bold text-xs hover:bg-sky-100/90 dark:hover:bg-sky-900/60 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+              >
+                <span className="text-amber-500 text-sm">⚡</span>
+                <span>Open Form Directly (Skip Geofence / Test Mode)</span>
+              </button>
             </div>
           )}
 
@@ -478,6 +532,15 @@ export function AttendanceFlow({ radiusMeters }: { radiusMeters: number }) {
 
               <button type="button" onClick={detectLocation} className="btn-secondary w-full py-3 font-semibold">
                 <PinIcon /> Try Detecting Location Again
+              </button>
+
+              <button
+                type="button"
+                onClick={simulateVenueLocation}
+                className="w-full py-2.5 px-3 rounded-xl border border-dashed border-sky-400/80 bg-sky-50/70 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 font-bold text-xs hover:bg-sky-100/90 dark:hover:bg-sky-900/60 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+              >
+                <span className="text-amber-500 text-sm">⚡</span>
+                <span>Open Form Directly (Skip Geofence / Test Mode)</span>
               </button>
             </div>
           )}
