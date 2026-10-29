@@ -18,6 +18,13 @@ export const metadata: Metadata = {
     template: "%s · SAMARTH INTERNSHIP 3.0",
   },
   description: "Location-verified attendance for SAMARTH INTERNSHIP 3.0 Icebreaking session",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/samarth-icon.png", type: "image/png" },
+    ],
+    apple: "/samarth-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
